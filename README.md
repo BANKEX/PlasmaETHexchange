@@ -48,7 +48,7 @@ Concept is implemented using JS with conjuction on Web3 and Ethereumjs-Testrpc o
 
 ## Why Plasma
 
-Here at BANKEX we believe in efficiency of offloading of some transactions from Ethereum blockchain to Plasma chains especially if proper incentive is present for Plasma operators to behave properly (such incentive can we even in a form of completing with other operators for obtaining end-users). Another advantage is a flexibility of Plasma chain implementation as long as it can be effectively cross-checked by contract on a parent chain. With new cryptographic primitived added in Metropolis fork one can extent our PoC implementation with more money-like transaction structure (1 -> 2 splits of UTXO) with transactions itself utilizing ring signatures of zkSNARKs for privacy of end user.
+Here at BANKEX we believe in efficiency of offloading of some transactions from Ethereum blockchain to Plasma chains especially if proper incentive is present for Plasma operators to behave properly (such incentive can we even in a form of completing with other operators for obtaining end-users). Another advantage is a flexibility of Plasma chain implementation as long as it can be effectively cross-checked by contract on a parent chain. With new cryptographic primitived added in Metropolis fork one can extent our PoC implementation with transactions utilizing ring signatures of zkSNARKs for privacy of end user.
 
 ### Installation and Prerequisutes
 
