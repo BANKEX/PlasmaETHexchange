@@ -1,0 +1,36 @@
+{
+  "name": "plamsa",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BankEx/PlasmaETHexchange"
+  },
+  "description": "Plasma protocol compatible ETH Exchange Platform",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server": "server.js"
+  },
+  "author": "Alexander Vlasov @shamatar",
+  "license": "ISC",
+  "dependencies": {
+    "coinstring": "^2.3.0",
+    "ethereumjs-testrpc": "^6.0.1",
+    "ethereumjs-util": "^5.1.2",
+    "express": "^4.16.2",
+    "js-sha3": "^0.6.1",
+    "jsonschema": "^1.2.0",
+    "leveldown": "^2.0.0",
+    "levelup": "^2.0.0",
+    "merkle-tools": "^1.4.0",
+    "moment": "^2.19.1",
+    "named-routes": "^2.0.6",
+    "queue": "^4.4.2",
+    "rimraf": "^2.6.2",
+    "scrypt": "^6.0.3",
+    "solc": "^0.4.18",
+    "truffle-artifactor": "^3.0.0",
+    "truffle-contract": "^3.0.1",
+    "web3": "^1.0.0-beta.24"
+  }
+}
