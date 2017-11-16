@@ -1,3 +1,15 @@
+const {blockNumberLength,
+    txNumberLength,
+    txTypeLength, 
+    signatureVlength,
+    signatureRlength,
+    signatureSlength,
+    merkleRootLength,
+    previousHashLength,
+    txOutputNumberLength,
+    txAmountLength,
+    txToAddressLength} = require('../../lib/dataStructureLengths');
+
 const config = require("../config/config");
 const ethUtil = require('ethereumjs-util'); 
 const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
@@ -20,11 +32,6 @@ const {TransactionOutput, TransactionOutputLength} = require("../../lib/Tx/outpu
 
 const dummyInput = new TransactionInput();
 const dummyOutput = new TransactionOutput();
-const outputNumInTxLength = dummyOutput.outputNumberInTransaction.length;
-const blockNumberLength = dummyInput.blockNumber.length;
-const txNumberInBlockLength = dummyInput.txNumberInBlock.length;
-const recipientLength = dummyOutput.to.length;
-const valueBufferLength = dummyOutput.valueBuffer.length;
 
 const transactionSchemaNoSignature = 
 {
@@ -94,18 +101,13 @@ module.exports = function (levelDB) {
             const txParams = {}
             let inputCounter = 0;
             for (let inputJSON of transactionJSON.inputs) {
-                inputCounter++
                 const unspentOutput = await getUTXO(inputJSON.blockNumber, inputJSON.txNumber, inputJSON.outputNumber);
                 if (!unspentOutput) {
                     return null;
                 }
-                // const TX = await getTX(inputJSON.blockNumber, inputJSON.txNumber);
-                const blockNumberBuffer = Buffer.alloc(blockNumberLength);
-                blockNumberBuffer.writeUInt32BE(inputJSON.blockNumber);
-                const txNumberBuffer = Buffer.alloc(txNumberInBlockLength)
-                txNumberBuffer.writeUInt16BE(inputJSON.txNumber)
-                const txOutputNumberBuffer = Buffer.alloc(outputNumInTxLength)
-                txOutputNumberBuffer.writeUInt8(inputJSON.outputNumber)
+                const blockNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(inputJSON.blockNumber)),blockNumberLength)
+                const txNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(inputJSON.txNumber)),txNumberLength)
+                const txOutputNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(inputJSON.outputNumber)),txOutputNumberLength)
                 const inputParams = {
                     blockNumber: blockNumberBuffer,
                     txNumberInBlock: txNumberBuffer,
@@ -115,12 +117,11 @@ module.exports = function (levelDB) {
                 const input = new TransactionInput(inputParams);
                 inputsTotalValue = inputsTotalValue.add(unspentOutput.value);
                 txParams["inputNum"+inputCounter]=Buffer.concat(input.raw);
+                inputCounter++;
             }
             let outputCounter = 0;
             for (let outputJSON of transactionJSON.outputs) {
-                outputCounter++
-                const outputNumberBuffer = Buffer.alloc(1);
-                outputNumberBuffer.writeUInt8(outputCounter);
+                const outputNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(outputCounter)),txOutputNumberLength)
                 const outputValue = new BN(outputJSON.amount);
                 if (outputValue.lte(0)) {
                     return null;
@@ -130,22 +131,21 @@ module.exports = function (levelDB) {
                     to: ethUtil.addHexPrefix(outputJSON.to),
                     // assetID: ethUtil.setLengthLeft(ethUtil.bufferToHex(ethUtil.toBuffer(asset)), 4),
                     outputNumberInTransaction: outputNumberBuffer,
-                    amountBuffer: ethUtil.setLengthLeft(ethUtil.toBuffer(outputValue),valueBufferLength)
+                    amountBuffer: ethUtil.setLengthLeft(ethUtil.toBuffer(outputValue),txAmountLength)
                 }
                 const transactionOutput = new TransactionOutput(outputParams);
                 txParams["outputNum"+outputCounter] = Buffer.concat(transactionOutput.raw);
-                
+                outputCounter++
             }
             if (outputsTotalValue.gt(inputsTotalValue)) {
                 return null;
             }
             if (txType == TxTypeMerge) {
-                if (txParams["outputNum1"].to !== txParams["outputNum2"].to){
+                if (txParams["inputNum0"].to !== txParams["inputNum1"].to){
                     return null;
                 }
             }
-            const txTypeBuffer = Buffer.alloc(1)
-            txTypeBuffer.writeUInt8(txType)
+            const txTypeBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(txType)), txTypeLength)
             txParams.transactionType = txTypeBuffer;
             const tx = new PlasmaTransaction(txParams);
             return tx;

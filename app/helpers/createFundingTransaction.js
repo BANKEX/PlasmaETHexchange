@@ -1,5 +1,19 @@
 const config = require("../config/config");
 const ethUtil = require('ethereumjs-util'); 
+const BN = ethUtil.BN;
+
+const {blockNumberLength,
+    txNumberLength,
+    txTypeLength, 
+    signatureVlength,
+    signatureRlength,
+    signatureSlength,
+    merkleRootLength,
+    previousHashLength,
+    txOutputNumberLength,
+    txAmountLength,
+    txToAddressLength} = require('../../lib/dataStructureLengths');
+
 const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
 const plasmaOperatorPrivKey = ethUtil.toBuffer(plasmaOperatorPrivKeyHex);
 const {PlasmaTransaction,
@@ -7,50 +21,45 @@ const {PlasmaTransaction,
     TxTypeMerge, 
     TxTypeSplit, 
     TxTypeWithdraw, 
+    TxTypeTransfer,
     TxLengthForTypes} = require("../../lib/Tx/tx");
 
 const {TransactionInput, TransactionInputLength} = require("../../lib/Tx/input");
 const {TransactionOutput, TransactionOutputLength} = require("../../lib/Tx/output");
 const dummyInput = new TransactionInput();
 const dummyOutput = new TransactionOutput();
-const outputNumInTxLength = dummyOutput.outputNumberInTransaction.length;
-const blockNumberLength = dummyInput.blockNumber.length;
-const txNumberInBlockLength = dummyInput.txNumberInBlock.length;
-const recipientLength = dummyOutput.to.length;
-const valueBufferLength = dummyOutput.valueBuffer.length;
 
 module.exports = function createFundingTransaction(toAddressString, amountBN, depositIndexBN) {
-    const amountBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(amountBN),valueBufferLength)
+    const amountBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(amountBN),txAmountLength)
     const inputParams = {
         blockNumber: '0x' + '00'.repeat(blockNumberLength),
-        txNumberInBlock: '0x' +'00'.repeat(txNumberInBlockLength),
+        txNumberInBlock: '0x' +'00'.repeat(txNumberLength),
         // assetID: ethUtil.setLengthLeft(ethUtil.bufferToHex(ethUtil.toBuffer(asset)), 4),
-        outputNumberInTransaction: '0x01',
+        outputNumberInTransaction: '0x00',
         amountBuffer
     }
     const input = new TransactionInput(inputParams);
     const outputParams = {
         to: ethUtil.addHexPrefix(toAddressString),
         // assetID: ethUtil.setLengthLeft(ethUtil.bufferToHex(ethUtil.toBuffer(asset)), 4),
-        outputNumberInTransaction: '0x01',
+        outputNumberInTransaction: '0x00',
         amountBuffer
     }
     const output = new TransactionOutput(outputParams);
-    const txTypeBuffer = Buffer.alloc(1)
-    txTypeBuffer.writeUInt8(TxTypeFund,0)
+    const txTypeBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(TxTypeFund)),txTypeLength)
 
     const depositRecordParams = {
         to: ethUtil.addHexPrefix(toAddressString),
-        outputNumberInTransaction: '0x02',
-        amountBuffer: ethUtil.setLengthLeft(ethUtil.toBuffer(depositIndexBN),valueBufferLength)
+        outputNumberInTransaction: '0xff',
+        amountBuffer: ethUtil.setLengthLeft(ethUtil.toBuffer(depositIndexBN),txAmountLength)
     }
     const auxOutput = new TransactionOutput(depositRecordParams);
 
     const txParams = {
         transactionType: txTypeBuffer,
-        inputNum1: Buffer.concat(input.raw),
-        outputNum1: Buffer.concat(output.raw),
-        outputNum2: Buffer.concat(auxOutput.raw)
+        inputNum0: Buffer.concat(input.raw),
+        outputNum0: Buffer.concat(output.raw),
+        outputNum1: Buffer.concat(auxOutput.raw)
     }
     const tx = new PlasmaTransaction(txParams);
     tx.sign(plasmaOperatorPrivKey); 

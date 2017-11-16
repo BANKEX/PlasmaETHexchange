@@ -8,50 +8,20 @@ const {TransactionInput} = require("../../lib/Tx/input");
 const {BlockHeader} = require("../../lib/Block/blockHeader");
 const assert = require('assert');
 
-module.exports = function(levelDB) {
-    const dummyInput = new TransactionInput();
-    const dummyOutput = new TransactionOutput();
-    const outputNumInTxLength = dummyOutput.outputNumberInTransaction.length;
-    const blockNumberLength = dummyInput.blockNumber.length;
-    const txNumberInBlockLength = dummyInput.txNumberInBlock.length;
-    const recipientLength = dummyOutput.to.length;
+const {blockNumberLength,
+    txNumberLength,
+    txTypeLength, 
+    signatureVlength,
+    signatureRlength,
+    signatureSlength,
+    merkleRootLength,
+    previousHashLength,
+    txOutputNumberLength,
+    txAmountLength,
+    txToAddressLength} = require('../../lib/dataStructureLengths');
 
-    // return async function getUTXOforAddress(addressString, cb) {
-    //     addressString = ethUtil.addHexPrefix(addressString)
-    
-    //     assert(ethUtil.isValidAddress(addressString));
-    //     address = ethUtil.toBuffer(addressString);
-    //     const utxos = [];
-    //     const start = Buffer.concat([utxoIncludingAddressPrefix, 
-    //         address,
-    //         Buffer.alloc(blockNumberLength), 
-    //         Buffer.alloc(txNumberInBlockLength), 
-    //         Buffer.alloc(outputNumInTxLength)])
-    //     const stop = Buffer.concat([utxoIncludingAddressPrefix, 
-    //         address,
-    //         Buffer.from("ff"*blockNumberLength, 'hex'), 
-    //         Buffer.from("ff"*txNumberInBlockLength, 'hex'),
-    //         Buffer.from("ff"*outputNumInTxLength, 'hex')])
-    //     levelDB.createReadStream({gte: start,
-    //                                 lte: stop,
-    //                                 reversed:true})
-    //     .on('data', function (data) {
-    //         const out = TransactionOutput.prototype.initFromBinaryBlob(data);
-    //         utxos.push(out);
-    //     })
-    //     .on('error', function (err) {
-    //         console.log('Oh my!', err)
-    //         cb(err, null)
-    //     })
-    //     .on('close', function () {
-    //         // cb(null, utxos)
-    //         console.log('Stream closed')
-    //     })
-    //     .on('end', function () {
-    //         cb(null, utxos)
-    //         console.log('Stream ended')
-    //     })
-    // }
+module.exports = function(levelDB) {
+
     return async function getUTXOforAddress(addressString, cb) {
         addressString = ethUtil.addHexPrefix(addressString)
         assert(ethUtil.isValidAddress(addressString));
@@ -59,19 +29,23 @@ module.exports = function(levelDB) {
         const utxos = [];
         const start = Buffer.concat([utxoPrefix,
             Buffer.alloc(blockNumberLength), 
-            Buffer.alloc(txNumberInBlockLength), 
-            Buffer.alloc(outputNumInTxLength)])
+            Buffer.alloc(txNumberLength), 
+            Buffer.alloc(txOutputNumberLength)])
         const stop = Buffer.concat([utxoPrefix,
             Buffer.from("ff".repeat(blockNumberLength), 'hex'), 
-            Buffer.from("ff".repeat(txNumberInBlockLength), 'hex'),
-            Buffer.from("ff".repeat(outputNumInTxLength), 'hex')])
+            Buffer.from("ff".repeat(txNumberLength), 'hex'),
+            Buffer.from("ff".repeat(txOutputNumberLength), 'hex')])
         levelDB.createReadStream({gte: start,
                                     lte: stop,
                                     reversed:true})
         .on('data', function (data) {
-            if (data.value.slice(0,20).equals(address)) {
+            if (data.value.slice(0,txToAddressLength).equals(address)) {
                 const out = TransactionOutput.prototype.initFromBinaryBlob(data.value);
-                utxos.push(out);
+                toReturn = {};
+                toReturn["blockNumber"] = ethUtil.bufferToInt(data.key.slice(utxoPrefix.length, utxoPrefix.length + blockNumberLength))
+                toReturn["txNumberInBlock"] = ethUtil.bufferToInt(data.key.slice(utxoPrefix.length + blockNumberLength, utxoPrefix.length + blockNumberLength + txNumberLength))
+                toReturn['output'] = out;
+                utxos.push(toReturn);
             }
         })
         .on('error', function (err) {

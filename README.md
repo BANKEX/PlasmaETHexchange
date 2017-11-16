@@ -1,6 +1,6 @@
 # The Plasma protocol compatible ETH Exchange Platform
 
-#WIP
+# WIP!
 
 # Clarification
 
@@ -13,7 +13,7 @@ Implemented challenges:
 1. Deposit -> No deposit published in Plasma chain? -> Start withdraw for deposit? -> Challenge deposit withdraw? -> Finalize"
 2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw" 
 
-Required challanges:
+Required challenges:
 1. Proof double spend (start withdraw and than spent on Plasma or vice-versa)
 2. Plain double spend 
 3. Proof funding transaction in Plasma without corresponding deposit in Ethereum network (or duplicate funding TX)

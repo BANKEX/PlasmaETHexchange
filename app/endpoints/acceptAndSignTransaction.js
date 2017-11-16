@@ -48,19 +48,18 @@ module.exports = function(app, levelDB, web3) {
             if (!tx.validate()){
                 return res.json({error: true, reason: "invalid transaction"});
             }
-            const test = tx.hash(true, false);
-            console.log(ethUtil.bufferToHex(test))
-            const testWithNumber = tx.hash(true, true);
-            console.log(ethUtil.bufferToHex(testWithNumber));
-            const testNoSigNoNumber = tx.hash(false, false);
-            console.log(ethUtil.bufferToHex(testNoSigNoNumber));
+            // const test = tx.hash(true, false);
+            // console.log(ethUtil.bufferToHex(test))
+            // const testWithNumber = tx.hash(true, true);
+            // console.log(ethUtil.bufferToHex(testWithNumber));
+            // const testNoSigNoNumber = tx.hash(false, false);
+            // console.log(ethUtil.bufferToHex(testNoSigNoNumber));
             app.txQueueArray.push(tx);
             console.log("Pushed new TX")
             return res.json({error: false, status: "accepted"});
         }
         catch(error){
             res.json({error: true, reason: "invalid transaction"});
-    
         }
     });
 }

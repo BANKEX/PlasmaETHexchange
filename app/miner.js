@@ -6,8 +6,22 @@ const headerPrefix = config.headerPrefix;
 const transactionPrefix=config.transactionPrefix;
 const blockTime = config.blockTime;
 
+const {blockNumberLength,
+    txNumberLength,
+    txTypeLength, 
+    signatureVlength,
+    signatureRlength,
+    signatureSlength,
+    merkleRootLength,
+    previousHashLength,
+    txOutputNumberLength,
+    txAmountLength,
+    txToAddressLength} = require('../lib/dataStructureLengths');
+
+const Web3 = require('web3');
 const Block = require('../lib/Block/block');
 const ethUtil = require('ethereumjs-util'); 
+const BN = ethUtil.BN;
 const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
 const plasmaOperatorPrivKey = ethUtil.toBuffer(plasmaOperatorPrivKeyHex);
 const plasmaOperatorAddress = config.plasmaOperatorAddress;
@@ -31,8 +45,7 @@ module.exports = function(app, levelDB, web3) {
                 lastBlock = await levelDB.get('lastBlockNumber');
             }
             catch(error) {
-                lastBlock = Buffer.alloc(4)
-                lastBlock.writeUInt32BE(0,0) 
+                lastBlock = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(0)),blockNumberLength)
                 await levelDB.put('lastBlockNumber', lastBlock);
             }
             try{
@@ -69,10 +82,9 @@ module.exports = function(app, levelDB, web3) {
                 // txNumBuffer.writeUInt16BE(i);
                 TXs[i].assignNumber(i);
             }
-            const lastBlockNumber = lastBlock.readUInt32BE(0)
-            const newBlockNumber = lastBlockNumber + 1;
-            const newBlockNumberBuffer = Buffer.alloc(4)
-            newBlockNumberBuffer.writeUInt32BE(newBlockNumber,0);
+            const lastBlockNumber = Web3.utils.toBN(ethUtil.addHexPrefix(lastBlock.toString('hex')));
+            const newBlockNumber = lastBlockNumber.add(new BN(1));
+            const newBlockNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(newBlockNumber), blockNumberLength);
             const blockParams = {
                 blockNumber:  newBlockNumberBuffer,
                 parentHash: lastBlockHash,
@@ -103,16 +115,16 @@ module.exports = function(app, levelDB, web3) {
                         .put(Buffer.concat([blockPrefix,block.header.blockNumber]),Buffer.concat(block.raw))
                         .put(Buffer.concat([headerPrefix,block.header.blockNumber]),Buffer.concat(block.header.raw))
         block.transactions.forEach((tx, i)=>{ 
-            for (let inpIndex of [1,2]) {
+            for (let inpIndex of [0,1]) {
                 const input = tx.getTransactionInput(inpIndex)
                 if (input && typeof input != "undefined") {
                     const keyForUTXO = Buffer.concat([utxoPrefix, input.blockNumber, input.txNumberInBlock, input.outputNumberInTransaction]);
                     writeRequest.del(keyForUTXO)
                 }
             }
-            for (let outIndex of [1,2]) {
+            for (let outIndex of [0,1]) {
                 const output = tx.getTransactionOutput(outIndex);
-                if (output && typeof output != "undefined" && !(tx.transactionTypeUInt() == TxTypeFund && outIndex==2) ) {
+                if (output && typeof output != "undefined" && !(output.outputNumberInTransaction.equals(Buffer.from('ff', 'hex'))) ) {
                     const keyForUTXO = Buffer.concat([utxoPrefix, block.header.blockNumber, tx.transactionNumberInBlock, output.outputNumberInTransaction]);
                     writeRequest.put(keyForUTXO, Buffer.concat(output.raw))
                 }

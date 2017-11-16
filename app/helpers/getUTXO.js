@@ -4,26 +4,31 @@ const utxoPrefix = config.utxoPrefix;
 const {TransactionOutput} = require("../../lib/Tx/output");
 const {TransactionInput} = require("../../lib/Tx/input");
 const {BlockHeader} = require("../../lib/Block/blockHeader");
+const ethUtil = require('ethereumjs-util');
+const BN = ethUtil.BN;
+
+const {blockNumberLength,
+    txNumberLength,
+    txTypeLength, 
+    signatureVlength,
+    signatureRlength,
+    signatureSlength,
+    merkleRootLength,
+    previousHashLength,
+    txOutputNumberLength,
+    txAmountLength,
+    txToAddressLength} = require('../../lib/dataStructureLengths');
 
 module.exports = function(levelDB) {
-    const dummyInput = new TransactionInput();
-    const dummyOutput = new TransactionOutput();
-    const outputNumInTxLength = dummyOutput.outputNumberInTransaction.length;
-    const blockNumberLength = dummyInput.blockNumber.length;
-    const txNumberInBlockLength = dummyInput.txNumberInBlock.length;
-    const recipientLength = dummyOutput.to.length;
 
     return async function getUTXO(blockNumber, txNumber, outputNumber) {
-        const blockNumberBuffer = Buffer.alloc(blockNumberLength);
-        blockNumberBuffer.writeUInt32BE(blockNumber);
-        const txNumberBuffer = Buffer.alloc(txNumberInBlockLength);
-        txNumberBuffer.writeUInt16BE(txNumber);
-        const outputNumberBuffer = Buffer.alloc(outputNumInTxLength);
-        outputNumberBuffer.writeUInt8(outputNumber);
+        const blockNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(blockNumber)),blockNumberLength)
+        const txNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(txNumber)),txNumberLength)
+        const txOutputNumberBuffer = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(outputNumber)),txOutputNumberLength)
         const query = Buffer.concat([utxoPrefix, 
             blockNumberBuffer, 
             txNumberBuffer,
-            outputNumberBuffer])
+            txOutputNumberBuffer])
         try {
             const data = await levelDB.get(query);
             return TransactionOutput.prototype.initFromBinaryBlob(data);

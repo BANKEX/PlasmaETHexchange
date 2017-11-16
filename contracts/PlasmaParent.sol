@@ -347,7 +347,7 @@ contract PlasmaParent {
     using ByteSlice for *;
     address public owner = msg.sender;
     address public operator = msg.sender;
-    uint32 public blockHeaderLength = 135;
+    uint32 public blockHeaderLength = 137;
     
     uint256 public lastBlockNumber = 0;
     uint256 public lastEthBlockNumber = block.number;
@@ -355,7 +355,7 @@ contract PlasmaParent {
     
     struct Header {
         uint32 blockNumber;
-        uint16 numTransactions;
+        uint32 numTransactions;
         uint8 v;
         bytes32 previousBlockHash;
         bytes32 merkleRootHash;
@@ -391,7 +391,7 @@ contract PlasmaParent {
     struct WithdrawRecord {
         uint256 index;
         uint32 blockNumber;
-        uint16 txNumberInBlock;
+        uint32 txNumberInBlock;
         uint8 outputNumberInTX;
         address beneficiary;
         bool isExpress;
@@ -401,15 +401,15 @@ contract PlasmaParent {
         uint256 timeEnded;
     }
 
-    uint256 constant TransactionInputLength = 39;
+    
     struct TransactionInput {
         uint32 blockNumber;
-        uint16 txNumberInBlock;
+        uint32 txNumberInBlock;
         uint8 outputNumberInTX;
         uint256 amount;
     }
 
-    uint256 constant TransactionOutputLength = 53;
+    
     struct TransactionOutput {
         address recipient;
         uint8 outputNumberInTX;
@@ -417,7 +417,7 @@ contract PlasmaParent {
     }
 
     struct PlasmaTransaction {
-        uint16 txNumberInBlock;
+        uint32 txNumberInBlock;
         uint8 txType;
         TransactionInput[] inputs;
         TransactionOutput[] outputs;
@@ -436,8 +436,19 @@ contract PlasmaParent {
     uint256[6] NumInputsForType = [0, 1, 2, 1, 1, 1];
     uint256[6] NumOutputsForType = [0, 2, 1, 1, 2, 1];
 
-    uint256 constant TxMainLength = 68;
     uint256 constant SignatureLength = 65;
+    uint256 constant BlockNumberLength = 4;
+    uint256 constant TxNumberLength = 4;
+    uint256 constant TxTypeLength = 1;
+    uint256 constant TxOutputNumberLength = 1;
+    uint256 constant PreviousHashLength = 32;
+    uint256 constant MerkleRootHashLength = 32;
+    uint256 constant TxAmountLength = 32;
+
+    uint256 TransactionOutputLength = 20 + TxOutputNumberLength + TxAmountLength;
+    uint256 TransactionInputLength = BlockNumberLength + TxNumberLength + TxOutputNumberLength + TxAmountLength;
+    uint256 TxMainLength = TxNumberLength + TxTypeLength + SignatureLength;
+
     uint256[6] TxLengthForType = [0,
         TxMainLength + 1*TransactionInputLength + 2*TransactionOutputLength,
         TxMainLength + 2*TransactionInputLength + 1*TransactionOutputLength,
@@ -454,15 +465,16 @@ contract PlasmaParent {
     event DepositWithdrawCompletedEvent(uint256 indexed _depositIndex);
 
     event WithdrawStartedEvent(uint32 indexed _blockNumber,
-                                uint16 indexed _txNumberInBlock,
+                                uint32 indexed _txNumberInBlock,
                                 uint8 indexed _outputNumberInTX);
     event WithdrawRequestAcceptedEvent(address indexed _from,
                                 uint256 indexed _withdrawIndex);
     event WithdrawFinalizedEvent(uint32 indexed _blockNumber,
-                                uint16 indexed _txNumberInBlock,
+                                uint32 indexed _txNumberInBlock,
                                 uint8 indexed _outputNumberInTX);       
                                 
     event Debug(bool indexed _success, bytes32 indexed _b, address indexed _signer);
+    event DebugUint(uint256 indexed _1, uint256 indexed _2, uint256 indexed _3);
     event SigEvent(address indexed _signer, bytes32 indexed _r, bytes32 indexed _s);
 
     function extract32(bytes data, uint pos) pure internal returns (bytes32 result) { 
@@ -499,12 +511,12 @@ contract PlasmaParent {
         require(msg.sender == operator);
         require(header.length == blockHeaderLength);
         uint32 blockNumber = uint32(extract4(header, 0));
-        uint16 numTransactions = uint16(extract2(header, 4));
-        bytes32 previousBlockHash = extract32(header, 6);
-        bytes32 merkleRootHash = extract32(header, 38);
-        uint8 v = uint8(extract1(header, 70));
-        bytes32 r = extract32(header, 71);
-        bytes32 s = extract32(header, 103);
+        uint32 numTransactions = uint32(extract4(header, BlockNumberLength));
+        bytes32 previousBlockHash = extract32(header, BlockNumberLength + TxNumberLength);
+        bytes32 merkleRootHash = extract32(header, BlockNumberLength + TxNumberLength + PreviousHashLength);
+        uint8 v = uint8(extract1(header, BlockNumberLength + TxNumberLength + PreviousHashLength + MerkleRootHashLength));
+        bytes32 r = extract32(header, BlockNumberLength + TxNumberLength + PreviousHashLength + MerkleRootHashLength + 1);
+        bytes32 s = extract32(header, BlockNumberLength + TxNumberLength + PreviousHashLength + MerkleRootHashLength + 33);
         uint256 newBlockNumber = uint256(uint32(blockNumber));
  
         require(newBlockNumber == lastBlockNumber+1);
@@ -545,7 +557,7 @@ contract PlasmaParent {
     }
     
     function recoverTXsigner(bytes memory txData, uint8 v, bytes32 r, bytes32 s, uint256 txType) internal view returns (address signer) {
-        bytes memory sliceNoNumberNoSignatureParts = txData.slice(2, TxLengthForType[txType] - SignatureLength).toBytes();
+        bytes memory sliceNoNumberNoSignatureParts = txData.slice(TxNumberLength, TxLengthForType[txType] - SignatureLength).toBytes();
         bytes32 persMessageHashWithoutNumber = createPersonalMessageTypeHash(sliceNoNumberNoSignatureParts);
         signer = ecrecover(persMessageHashWithoutNumber, v, r, s);
         return signer;
@@ -633,18 +645,19 @@ contract PlasmaParent {
         require(TX.txType == TxTypeFund);
         address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
         require(signer == operator);
-        TransactionOutput memory output1 = TX.outputs[0];
-        TransactionOutput memory output2 = TX.outputs[1];
-        require(output1.recipient == record.from);
-        require(output1.amount == record.amount);
-        require(output2.amount == depositIndex);
+        TransactionOutput memory output0 = TX.outputs[0];
+        TransactionOutput memory output1 = TX.outputs[1];
+        require(output0.recipient == record.from);
+        require(output0.amount == record.amount);
+        require(output1.outputNumberInTX == 255);
+        require(output1.amount == depositIndex);
         record.status = DepositStatus.DepositConfirmed;
         DepositWithdrawChallengedEvent(depositIndex);
         return true;
     }
     
     function startWithdraw(uint32 _plasmaBlockNumber, //references and proves ownership on output of original transaction
-                            uint16 _plasmaTxNumInBlock, 
+                            uint32 _plasmaTxNumInBlock, 
                             uint8 _outputNumber,
                             bytes _plasmaTransaction, 
                             bytes _merkleProof) 
@@ -657,8 +670,9 @@ contract PlasmaParent {
         require(TX.txType != TxTypeWithdraw);
         address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
         require(signer != address(0));
-        TransactionOutput memory output = TX.outputs[_outputNumber-1];
+        TransactionOutput memory output = TX.outputs[_outputNumber];
         require(output.recipient == msg.sender);
+        require(output.outputNumberInTX != 255);
         WithdrawRecord storage record = populateWithdrawRecordFromOutput(output, _plasmaBlockNumber, _plasmaTxNumInBlock, _outputNumber);
         record.beneficiary = output.recipient;
         record.timeEnded = now;
@@ -670,7 +684,7 @@ contract PlasmaParent {
 
 
     function finalizeWithdrawExpress(uint32 _plasmaBlockNumber, //references and proves ownership on withdraw transaction
-                            uint16 _plasmaTxNumInBlock, 
+                            uint32 _plasmaTxNumInBlock, 
                             bytes _plasmaTransaction, 
                             bytes _merkleProof) 
     public returns(bool success, uint256 withdrawIndex) {
@@ -696,7 +710,7 @@ contract PlasmaParent {
     } 
 
     function getWithdrawRecordForInput(TransactionInput memory _input) internal returns (WithdrawRecord storage record) {
-        uint256 withdrawIndex = uint256(_input.blockNumber) << 24 + uint256(_input.txNumberInBlock) << 8 + uint256(_input.outputNumberInTX);
+        uint256 withdrawIndex = uint256(_input.blockNumber) << ((TxNumberLength + TxTypeLength)*8) + uint256(_input.txNumberInBlock) << (TxTypeLength*8) + uint256(_input.outputNumberInTX);
         record = withdrawRecords[0][withdrawIndex];
         require(record.index == withdrawIndex);
         require(record.blockNumber == _input.blockNumber);
@@ -707,7 +721,7 @@ contract PlasmaParent {
     }
 
     function populateWithdrawRecordForInput(TransactionInput memory _input) internal returns (WithdrawRecord storage record) {
-        uint256 withdrawIndex = uint256(_input.blockNumber) << 24 + uint256(_input.txNumberInBlock) << 8 + uint256(_input.outputNumberInTX);
+        uint256 withdrawIndex = uint256(_input.blockNumber) << ((TxNumberLength + TxTypeLength)*8) + uint256(_input.txNumberInBlock) << (TxTypeLength*8) + uint256(_input.outputNumberInTX);
         record = withdrawRecords[0][withdrawIndex];
         require(record.status == WithdrawStatus.NoRecord);
         record.index = withdrawIndex;
@@ -720,8 +734,8 @@ contract PlasmaParent {
         return record;
     }
 
-    function populateWithdrawRecordFromOutput(TransactionOutput memory _output, uint32 _blockNumber, uint16 _txNumberInBlock, uint8 _outputNumberInTX) internal returns (WithdrawRecord storage record) {
-        uint256 withdrawIndex = uint256(_blockNumber) << 24 + uint256(_txNumberInBlock) << 8 + uint256(_outputNumberInTX);
+    function populateWithdrawRecordFromOutput(TransactionOutput memory _output, uint32 _blockNumber, uint32 _txNumberInBlock, uint8 _outputNumberInTX) internal returns (WithdrawRecord storage record) {
+        uint256 withdrawIndex = uint256(_blockNumber) << ((TxNumberLength + TxTypeLength)*8) + uint256(_txNumberInBlock) << (TxTypeLength*8) + uint256(_outputNumberInTX);
         record = withdrawRecords[0][withdrawIndex];
         require(record.status == WithdrawStatus.NoRecord);
         record.index = withdrawIndex;
@@ -747,13 +761,13 @@ contract PlasmaParent {
     } 
 
     function plasmaTransactionFromBytes(bytes _rawTX) internal view returns (PlasmaTransaction memory TX) {
-        uint8 txType = uint8(extract1(_rawTX, 2));
+        uint8 txType = uint8(extract1(_rawTX, TxNumberLength));
         uint256 expectedLength = TxLengthForType[txType];
         require(_rawTX.length == expectedLength);
         uint256 numInputs = NumInputsForType[txType];
         uint256 numOutputs = NumOutputsForType[txType];
-        uint16 numInBlock = uint16(extract2(_rawTX,0));
-        uint256 signatureOffset = 3 + numInputs*TransactionInputLength + numOutputs*TransactionOutputLength;
+        uint32 numInBlock = uint32(extract4(_rawTX,0));
+        uint256 signatureOffset = TxNumberLength + TxTypeLength + numInputs*TransactionInputLength + numOutputs*TransactionOutputLength;
         uint8 v = uint8(extract1(_rawTX, signatureOffset));
         bytes32 r = extract32(_rawTX, signatureOffset + 1);
         bytes32 s = extract32(_rawTX, signatureOffset + 33);
@@ -766,7 +780,7 @@ contract PlasmaParent {
             r: r,
             s: s
         });
-        bytes memory insAndOutsSlice = _rawTX.slice(3, signatureOffset).toBytes();
+        bytes memory insAndOutsSlice = _rawTX.slice(TxNumberLength + TxTypeLength, signatureOffset).toBytes();
         assert(populateInsAndOuts(TX, numInputs, numOutputs, insAndOutsSlice));
         return TX;
     }
@@ -777,25 +791,27 @@ contract PlasmaParent {
             for (i = 0; i < _numIns; i++) {
                 bytes memory rawInput = _insAndOutsSlice.slice(i*TransactionInputLength, (i+1)*TransactionInputLength).toBytes();
                 TransactionInput memory input = transactionInputFromBytes(rawInput);
-                require(input.outputNumberInTX == i+1);
                 _TX.inputs[i] = input;
             }
             for (i = 0; i < _numOuts; i++) {
                 bytes memory rawOutput = _insAndOutsSlice.slice(_numIns*TransactionInputLength + i*TransactionOutputLength, 
                                                 _numIns*TransactionInputLength + (i+1)*TransactionOutputLength).toBytes();
                 TransactionOutput memory output = transactionOutputFromBytes(rawOutput);
-                require(output.outputNumberInTX == i+1);
+                if (output.outputNumberInTX == 255){
+                    continue;
+                }
+                require(output.outputNumberInTX == i);
                 _TX.outputs[i] = output;
             }
             return true;
     }
 
-    function transactionInputFromBytes(bytes _rawInput) internal pure returns(TransactionInput memory input) {
+    function transactionInputFromBytes(bytes _rawInput) internal view returns(TransactionInput memory input) {
         require(_rawInput.length == TransactionInputLength);
         uint32 blockNumber = uint32(extract4(_rawInput,0));
-        uint16 txNumberInBlock = uint16(extract2(_rawInput, 4));
-        uint8 outputNumberInTX = uint8(extract1(_rawInput, 6));
-        uint256 amount = uint256(extract32(_rawInput, 7));
+        uint32 txNumberInBlock = uint32(extract4(_rawInput, BlockNumberLength));
+        uint8 outputNumberInTX = uint8(extract1(_rawInput, BlockNumberLength + TxNumberLength));
+        uint256 amount = uint256(extract32(_rawInput, BlockNumberLength + TxNumberLength + TxOutputNumberLength));
         input = TransactionInput({
             blockNumber: blockNumber,
             txNumberInBlock: txNumberInBlock,
@@ -805,11 +821,11 @@ contract PlasmaParent {
         return input;
     }
 
-    function transactionOutputFromBytes(bytes _rawOutput) internal pure returns(TransactionOutput memory output) {
+    function transactionOutputFromBytes(bytes _rawOutput) internal view returns(TransactionOutput memory output) {
         require(_rawOutput.length == TransactionOutputLength);
         address recipient = address(extract20(_rawOutput, 0));
         uint8 outputNumberInTX = uint8(extract1(_rawOutput, 20));
-        uint256 amount = uint256(extract32(_rawOutput, 21));
+        uint256 amount = uint256(extract32(_rawOutput, 20 + TxOutputNumberLength));
         output = TransactionOutput({
             recipient: recipient,
             outputNumberInTX: outputNumberInTX,
@@ -819,16 +835,3 @@ contract PlasmaParent {
     }
 
 }
-
-
-        // WithdrawRecord memory newRecord = WithdrawRecord({
-        //     blockNumber: header.blockNumber,
-        //     txNumberInBlock: TX.txNumberInBlock,
-        //     outputNumberInTX: 1,
-        //     beneficiary: signer,
-        //     isExpress: true,
-        //     status : WithdrawStatus.Completed,
-        //     amount: TX.inputs[0].amount,
-        //     timeStarted: now,
-        //     timeEnded: now
-        // });

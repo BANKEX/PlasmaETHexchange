@@ -1,6 +1,7 @@
 //demo purposes only
 const Web3 = require('web3');
 const ethUtil = require('ethereumjs-util'); 
+const BN = ethUtil.BN;
 const assert = require('assert');
 const {PlasmaTransaction,
     TxTypeFund, 
