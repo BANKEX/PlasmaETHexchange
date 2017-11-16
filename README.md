@@ -76,6 +76,7 @@ npm run server
 Backend ```localhost:8000/```
 
 Insomnia.json is an Insomnia workspace file with various testing functions, play with it.
+!! May require some parameter changes in existing requests to comply to new output numbering
 
 Addresses:
 
