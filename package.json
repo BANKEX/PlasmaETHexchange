@@ -9,7 +9,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "server.js"
+    "server": "node server.js"
   },
   "author": "Alexander Vlasov @shamatar",
   "license": "ISC",
