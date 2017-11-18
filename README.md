@@ -35,16 +35,20 @@ From a technical point of view Plasma blockchain - is just another blockchain, t
 
 Plasma chain itself has a straightforward structure with assets being undividable and transferred in full from the previous owner to the next one. The transaction has inputs and outputs, with few different types of transactions depending on the required function. For example, we propose type "Merge" to merge two inputs into one output to reduce the number of UTXOs to follow by the client. Full description will be given when the design is more stable. All chain logic is made using Ethereum crypto primitives - sha3, secp256k1 and 65-byte signatures allowing use of ecrecover.
 
-Block in Plasma network has a structure of Header:[BlockNumber, NumberOfTransactions, ParentHash, MerkleTreeRoot, PlasmaOperatorSignature], where ParentHash references the previous block (by number), and MerkleTreeRoot is root hash of a Merkle tree NumberOfTransactions transactions in this Plasma block and an array of transactions.
+Block in Plasma network has a structure of Header: ```[BlockNumber, NumberOfTransactions, ParentHash, MerkleTreeRoot, PlasmaOperatorSignature]```, where 
+
+- `ParentHash` references the previous block (by number)
+- `MerkleTreeRoot` is root hash of a Merkle tree 
+- `NumberOfTransactions` transactions in this Plasma block and an array of transactions.
 
 The header is submitted by Plasma network operator to the smart-contract on Ethereum chain. Blocks can only be sent one by one, with sequence numbering is enforced by contract. Any user of Ethereum network can deposit ETH to contract that will trigger and event and will allow Plasma network operator to make a funding transaction in Plasma chain. Then users can freely transact in Plasma chain, with headers pushed to parent contract in Ethereum.
 
-When a user wants to settle one of his transactions to the main network, he starts a withdraw on Ethereum network by providing the reference to the transaction (in the form of BlockNumber, TxNumberInBlock, OutputNumberInTX), full transaction and Merkle proof that this transaction was indeed included in that block. Parent contract checks a proof versus submitted root hash for this block and if it passed starts withdraw process. After 24 hours it can be finalized. There is a particular kind of transaction in Plasma network that can speed up a process by efficiently burning the input (sending it to 0x0). If this block is not published by the operator, withdraw can go as usual.
+When a user wants to settle one of his transactions to the main network, he starts a withdraw on Ethereum network by providing the reference to the transaction (in the form of `BlockNumber`, `TxNumberInBlock`, `OutputNumberInTX`), full transaction and Merkle proof that this transaction was indeed included in that block. Parent contract checks a proof versus submitted root hash for this block and if it passed starts withdraw process. After 24 hours it can be finalized. There is a particular kind of transaction in Plasma network that can speed up a process by efficiently burning the input (sending it to `0x0`). If this block is not published by the operator, withdraw can go as usual.
 
 
 ## Technology in PoC
 
-The concept is implemented using JS with conjunction on Web3 and Ethereumjs-Testrpc on a backend. For the sake of simplicity, all necessary functions are wrapped in REST API calls doing signatures on behalf of a predefined set of the address on a server. Further work will allow users to use wallet apps such as Metamask to initiate transactions in a Plasma network by making a signature on a client side and interacting with a parent contract on Ethereum network as usual.
+The concept is implemented using JS with conjunction on [Web3](https://github.com/ethereum/web3.js/) and [ethereumjs/testrpc](https://github.com/ethereumjs/testrpc) on a backend. For the sake of simplicity, all necessary functions are wrapped in REST API calls doing signatures on behalf of a predefined set of the address on a server. Further work will allow users to use wallet apps such as Metamask to initiate transactions in a Plasma network by making a signature on a client side and interacting with a parent contract on Ethereum network as usual.
 
 ## Why Plasma?
 
@@ -75,10 +79,11 @@ npm run server
 
 Backend ```localhost:8000/```
 
-Insomnia.json is an Insomnia workspace file with various testing functions, play with it.
-!! May require some parameter changes in existing requests to comply with new output numbering.
+`Insomnia.json` is an Insomnia workspace file with various testing functions, play with it.
 
-Addresses:
+**!! May require some parameter changes in existing requests to comply with new output numbering.**
+
+#### Addresses:
 
 User 1: `0xf62803ffaddda373d44b10bf6bb404909be0e66b`
 
