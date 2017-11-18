@@ -48,11 +48,11 @@ The concept is implemented using JS with conjunction on Web3 and Ethereumjs-Test
 
 ## Why Plasma?
 
-Here at BankEx, we believe in the efficiency of offloading of some transactions from Ethereum blockchain to Plasma chains especially if the proper incentive is present for Plasma operators to behave appropriately (such incentive can we even in the form of competing with other operators for obtaining end-users). Another advantage is a flexibility of Plasma chain implementation as long as it can be effectively cross-checked by contract on a parent chain. With new cryptographic primitive added in Metropolis fork, one can extend our PoC implementation with transactions utilizing ring signatures of zkSNARKs for the privacy of end user.
+Here at BankEx, we believe in the efficiency of offloading of some transactions from Ethereum blockchain to Plasma chains especially if the proper incentive is present for Plasma operators to behave appropriately (such incentive can we even in the form of competing with other operators for obtaining end-users). Another advantage is a flexibility of Plasma chain implementation as long as it can be effectively cross-checked by contract on a parent chain. With new cryptographic primitive added in Metropolis fork, one can extend our PoC implementation with transactions utilizing ring signatures of **zkSNARK**s for the privacy of end user.
 
-### Installation and requirements
+### Installation:
 
-System requirements:
+#### System requirements:
 
 * Ubuntu or similar is preferable but can also be run on Mac OS X or Windows as well
 * NodeJS version >= 8.9. Tested on 9.0
@@ -80,14 +80,15 @@ Insomnia.json is an Insomnia workspace file with various testing functions, play
 
 Addresses:
 
-User 1: 0xf62803ffaddda373d44b10bf6bb404909be0e66b
-User 2: 0xcf78f18299eac0e0a238db7f4742ef433f98c85e
+User 1: `0xf62803ffaddda373d44b10bf6bb404909be0e66b`
 
-Operator (oracle) : 0x405aaaa4bdcda14a0af295f3669459b6b0fc8104
+User 2: `0xcf78f18299eac0e0a238db7f4742ef433f98c85e`
+
+Operator (oracle): `0x405aaaa4bdcda14a0af295f3669459b6b0fc8104`
 
 ### Basic Plasma API description
 
-Will be filled later
+> Will be filled later
 
 ## Contributions
 
