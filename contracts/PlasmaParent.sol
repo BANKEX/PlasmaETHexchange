@@ -10,12 +10,12 @@ library ByteSlice {
     /// @dev Converts bytes to a slice.
     /// @param self The bytes.
     /// @return A slice.
-    function slice(bytes memory self) internal constant returns (Slice memory slice) {
+    function slice(bytes memory self) internal pure returns (Slice memory newSlice) {
         assembly {
-            let len := mload(self)
+            let length := mload(self)
             let memPtr := add(self, 0x20)
-            mstore(slice, mul(memPtr, iszero(iszero(len))))
-            mstore(add(slice, 0x20), len)
+            mstore(newSlice, mul(memPtr, iszero(iszero(length))))
+            mstore(add(newSlice, 0x20), length)
         }
     }
 
@@ -24,7 +24,7 @@ library ByteSlice {
     /// @param self The bytes.
     /// @param startpos The starting position.
     /// @return A slice.
-    function slice(bytes memory self, uint startpos) internal constant returns (Slice memory) {
+    function slice(bytes memory self, uint startpos) internal pure returns (Slice memory) {
         return slice(slice(self), startpos);
     }
 
@@ -33,7 +33,7 @@ library ByteSlice {
     /// @param self The bytes.
     /// @param startpos The starting position.
     /// @return A slice.
-    function slice(bytes memory self, int startpos) internal constant returns (Slice memory) {
+    function slice(bytes memory self, int startpos) internal pure returns (Slice memory) {
         return slice(slice(self), startpos);
     }
 
@@ -44,7 +44,7 @@ library ByteSlice {
     /// @param startpos The starting position.
     /// @param endpos The end position.
     /// @return A slice.
-    function slice(bytes memory self, uint startpos, uint endpos) internal constant returns (Slice memory) {
+    function slice(bytes memory self, uint startpos, uint endpos) internal view returns (Slice memory) {
         return slice(slice(self), startpos, endpos);
     }
 
@@ -54,14 +54,14 @@ library ByteSlice {
     /// @param startpos The starting position.
     /// @param endpos The end position.
     /// @return A slice.
-    function slice(bytes memory self, int startpos, int endpos) internal constant returns (Slice memory) {
+    function slice(bytes memory self, int startpos, int endpos) internal view returns (Slice memory) {
         return slice(slice(self), startpos, endpos);
     }
 
     /// @dev Get the length of the slice (in bytes).
     /// @param self The slice.
     /// @return the length.
-    function len(Slice memory self) internal constant returns (uint) {
+    function len(Slice memory self) internal pure returns (uint) {
         return self._unsafe_length;
     }
 
@@ -70,7 +70,7 @@ library ByteSlice {
     /// @param self The slice.
     /// @param index The index.
     /// @return The byte at that index.
-    function at(Slice memory self, uint index) internal constant returns (byte b) {
+    function at(Slice memory self, uint index) internal pure returns (byte b) {
         if (index >= self._unsafe_length)
             revert();
         uint bb;
@@ -86,7 +86,7 @@ library ByteSlice {
     /// @param self The slice.
     /// @param index The index.
     /// @return The byte at that index.
-    function at(Slice memory self, int index) internal constant returns (byte b) {
+    function at(Slice memory self, int index) internal pure returns (byte b) {
         if (index >= 0)
             return at(self, uint(index));
         uint iAbs = uint(-index);
@@ -100,7 +100,7 @@ library ByteSlice {
     /// @param self The slice.
     /// @param index The index.
     /// @return The byte at that index.
-    function set(Slice memory self, uint index, byte b) internal constant {
+    function set(Slice memory self, uint index, byte b) internal pure {
         if (index >= self._unsafe_length)
             revert();
         assembly {
@@ -113,7 +113,7 @@ library ByteSlice {
     /// @param self The slice.
     /// @param index The index.
     /// @return The byte at that index.
-    function set(Slice memory self, int index, byte b) internal constant {
+    function set(Slice memory self, int index, byte b) internal pure {
         if (index >= 0)
             return set(self, uint(index), b);
         uint iAbs = uint(-index);
@@ -125,7 +125,7 @@ library ByteSlice {
     /// @dev Creates a copy of the slice.
     /// @param self The slice.
     /// @return the new reference.
-    function slice(Slice memory self) internal constant returns (Slice memory newSlice) {
+    function slice(Slice memory self) internal pure returns (Slice memory newSlice) {
         newSlice._unsafe_memPtr = self._unsafe_memPtr;
         newSlice._unsafe_length = self._unsafe_length;
     }
@@ -135,15 +135,15 @@ library ByteSlice {
     /// @param self The slice.
     /// @param startpos The starting position.
     /// @return The new slice.
-    function slice(Slice memory self, uint startpos) internal constant returns (Slice memory newSlice) {
-        uint len = self._unsafe_length;
-        if (startpos > len)
+    function slice(Slice memory self, uint startpos) internal pure returns (Slice memory newSlice) {
+        uint length = self._unsafe_length;
+        if (startpos > length)
             revert();
         assembly {
-            len := sub(len, startpos)
-            let newMemPtr := mul(add(mload(self), startpos), iszero(iszero(len)))
+            length := sub(length, startpos)
+            let newMemPtr := mul(add(mload(self), startpos), iszero(iszero(length)))
             mstore(newSlice, newMemPtr)
-            mstore(add(newSlice, 0x20), len)
+            mstore(add(newSlice, 0x20), length)
         }
     }
 
@@ -152,25 +152,24 @@ library ByteSlice {
     /// @param self The slice.
     /// @param startpos The starting position.
     /// @return The new slice.
-    function slice(Slice memory self, int startpos) internal constant returns (Slice memory newSlice) {
-        uint sAbs;
+    function slice(Slice memory self, int startpos) internal pure returns (Slice memory newSlice) {
         uint startpos_;
-        uint len = self._unsafe_length;
+        uint length = self._unsafe_length;
         if (startpos >= 0) {
             startpos_ = uint(startpos);
-            if (startpos_ > len)
+            if (startpos_ > length)
                 revert();
         } else {
             startpos_ = uint(-startpos);
-            if (startpos_ > len)
+            if (startpos_ > length)
                 revert();
-            startpos_ = len - startpos_;
+            startpos_ = length - startpos_;
         }
         assembly {
-            len := sub(len, startpos_)
-            let newMemPtr := mul(add(mload(self), startpos_), iszero(iszero(len)))
+            length := sub(length, startpos_)
+            let newMemPtr := mul(add(mload(self), startpos_), iszero(iszero(length)))
             mstore(newSlice, newMemPtr)
-            mstore(add(newSlice, 0x20), len)
+            mstore(add(newSlice, 0x20), length)
         }
     }
 
@@ -181,15 +180,15 @@ library ByteSlice {
     /// @param startpos The starting position.
     /// @param endpos The end position.
     /// @return the new slice.
-    function slice(Slice memory self, uint startpos, uint endpos) internal constant returns (Slice memory newSlice) {
-        uint len = self._unsafe_length;
-        if (startpos > len || endpos > len || startpos > endpos)
+    function slice(Slice memory self, uint startpos, uint endpos) internal pure returns (Slice memory newSlice) {
+        uint length = self._unsafe_length;
+        if (startpos > length || endpos > length || startpos > endpos)
             revert();
         assembly {
-            len := sub(endpos, startpos)
-            let newMemPtr := mul(add(mload(self), startpos), iszero(iszero(len)))
+            length := sub(endpos, startpos)
+            let newMemPtr := mul(add(mload(self), startpos), iszero(iszero(length)))
             mstore(newSlice, newMemPtr)
-            mstore(add(newSlice, 0x20), len)
+            mstore(add(newSlice, 0x20), length)
         }
     }
 
@@ -199,40 +198,40 @@ library ByteSlice {
     /// @param startpos The starting position.
     /// @param endpos The end position.
     /// @return The new slice.
-    function slice(Slice memory self, int startpos, int endpos) internal constant returns (Slice memory newSlice) {
+    function slice(Slice memory self, int startpos, int endpos) internal pure returns (Slice memory newSlice) {
        // Don't allow slice on bytes of length 0.
         uint startpos_;
         uint endpos_;
-        uint len = self._unsafe_length;
+        uint length = self._unsafe_length;
         if (startpos < 0) {
             startpos_ = uint(-startpos);
-            if (startpos_ > len)
+            if (startpos_ > length)
                 revert();
-            startpos_ = len - startpos_;
+            startpos_ = length - startpos_;
         }
         else {
             startpos_ = uint(startpos);
-            if (startpos_ > len)
+            if (startpos_ > length)
                 revert();
         }
         if (endpos < 0) {
             endpos_ = uint(-endpos);
-            if (endpos_ > len)
+            if (endpos_ > length)
                 revert();
-            endpos_ = len - endpos_;
+            endpos_ = length - endpos_;
         }
         else {
             endpos_ = uint(endpos);
-            if (endpos_ > len)
+            if (endpos_ > length)
                 revert();
         }
         if(startpos_ > endpos_)
             revert();
         assembly {
-            len := sub(endpos_, startpos_)
-            let newMemPtr := mul(add(mload(self), startpos_), iszero(iszero(len)))
+            length := sub(endpos_, startpos_)
+            let newMemPtr := mul(add(mload(self), startpos_), iszero(iszero(length)))
             mstore(newSlice, newMemPtr)
-            mstore(add(newSlice, 0x20), len)
+            mstore(add(newSlice, 0x20), length)
         }
     }
 
@@ -271,7 +270,7 @@ library ByteSlice {
     /// The number of bytes copied is 'self._unsafe_length'.
     /// @param self The slice.
     /// @return The bytes variable.
-    function toAscii(Slice memory self) internal constant returns (string memory str) {
+    function toAscii(Slice memory self) internal view returns (string memory str) {
         return string(toBytes(self));
     }
 
@@ -279,7 +278,7 @@ library ByteSlice {
     /// @param self The slice.
     /// @param other The other slice.
     /// @return True if both slices point to the same memory address, and has the same length.
-    function equals(Slice memory self, Slice memory other) internal constant returns (bool) {
+    function equals(Slice memory self, Slice memory other) internal pure returns (bool) {
         return (
             self._unsafe_length == other._unsafe_length &&
             self._unsafe_memPtr == other._unsafe_memPtr
@@ -346,7 +345,8 @@ contract PlasmaParent {
     using Bytes for *;
     using ByteSlice for *;
     address public owner = msg.sender;
-    address public operator = msg.sender;
+    mapping(address => bool) operators;
+    // address public operator = msg.sender;
     uint32 public blockHeaderLength = 137;
     
     uint256 public lastBlockNumber = 0;
@@ -401,7 +401,10 @@ contract PlasmaParent {
         uint256 timeEnded;
     }
 
-    
+    struct DoubleSpendRecord {
+        bool prooved;
+    }
+
     struct TransactionInput {
         uint32 blockNumber;
         uint32 txNumberInBlock;
@@ -458,11 +461,14 @@ contract PlasmaParent {
 
     mapping (uint256 => mapping(uint256 => DepositRecord)) public depositRecords;
     mapping (uint256 => mapping(uint256 => WithdrawRecord)) public withdrawRecords;
+    mapping (uint256 => mapping(uint256 => DoubleSpendRecord)) public doubleSpendRecords;
     mapping (uint256 => Header) public headers;
+
     event DepositEvent(address indexed _from, uint256 indexed _amount, uint256 indexed _depositIndex);
     event DepositWithdrawStartedEvent(uint256 indexed _depositIndex);
     event DepositWithdrawChallengedEvent(uint256 indexed _depositIndex);
     event DepositWithdrawCompletedEvent(uint256 indexed _depositIndex);
+    
 
     event WithdrawStartedEvent(uint32 indexed _blockNumber,
                                 uint32 indexed _txNumberInBlock,
@@ -472,6 +478,8 @@ contract PlasmaParent {
     event WithdrawFinalizedEvent(uint32 indexed _blockNumber,
                                 uint32 indexed _txNumberInBlock,
                                 uint8 indexed _outputNumberInTX);       
+
+    event DoubleSpendProovedEvent(uint256 indexed _index1, uint256 indexed _index2);
                                 
     event Debug(bool indexed _success, bytes32 indexed _b, address indexed _signer);
     event DebugUint(uint256 indexed _1, uint256 indexed _2, uint256 indexed _3);
@@ -507,8 +515,18 @@ contract PlasmaParent {
         }
     }    
     
+    function PlasmaParent() public {
+        operators[msg.sender] = true;
+    }
+    
+    function setOperator(address _op, bool _status) public returns (bool success) {
+        require(msg.sender == owner);
+        operators[_op] = _status;
+        return true;
+    }
+
     function submitBlockHeader(bytes header) public returns (bool success) {
-        require(msg.sender == operator);
+        require(operators[msg.sender]);
         require(header.length == blockHeaderLength);
         uint32 blockNumber = uint32(extract4(header, 0));
         uint32 numTransactions = uint32(extract4(header, BlockNumberLength));
@@ -532,9 +550,7 @@ contract PlasmaParent {
         }
         address signer = ecrecover(newBlockHash, v, r, s);
         SigEvent(signer, r, s);
-        if (signer != operator) {
-            // revert();
-        }
+        require(operators[signer]);
         Header memory newHeader = Header({
             blockNumber: blockNumber,
             numTransactions: numTransactions,
@@ -549,47 +565,10 @@ contract PlasmaParent {
         return true;
     }
     
-    function createPersonalMessageTypeHash(bytes memory message) internal view returns (bytes32 msgHash) {
-        bytes memory prefixBytes = "\x19Ethereum Signed Message:\n";
-        bytes memory lengthBytes = message.length.uintToBytes();
-        bytes memory prefix = prefixBytes.concat(lengthBytes);
-        return keccak256(prefix, message);
-    }
-    
-    function recoverTXsigner(bytes memory txData, uint8 v, bytes32 r, bytes32 s, uint256 txType) internal view returns (address signer) {
-        bytes memory sliceNoNumberNoSignatureParts = txData.slice(TxNumberLength, TxLengthForType[txType] - SignatureLength).toBytes();
-        bytes32 persMessageHashWithoutNumber = createPersonalMessageTypeHash(sliceNoNumberNoSignatureParts);
-        signer = ecrecover(persMessageHashWithoutNumber, v, r, s);
-        return signer;
-    }
 
-    function checkProof(bytes32 root, bytes data, bytes proof, bool convertToMessageHash) view public returns (bool) {
-        bytes32 h;
-        if (convertToMessageHash) {
-            h = createPersonalMessageTypeHash(data);
-        } else {
-            h = keccak256(data);
-        }
-        bytes32 elProvided;
-        uint8 rightElementProvided;
-        uint32 loc;
-        uint32 elLoc;
-        for (uint32 i = 32; i <= uint32(proof.length); i += 33) {
-            assembly {
-                loc  := proof 
-                elLoc := add(loc, add(i, 1))
-                elProvided := mload(elLoc)
-            }
-            rightElementProvided = uint8(bytes1(0xff)&proof[i-32]);
-            if (rightElementProvided > 0) {
-                h = keccak256(h, elProvided);
-            } else {
-                h = keccak256(elProvided, h);
-            }
-        }
-        return h == root;
-      }
-    
+// ----------------------------------
+// Deposit related functions
+
     function deposit() payable public returns (uint256 idx) {
         if (block.number != lastEthBlockNumber) {
             depositCounterInBlock = 0;
@@ -644,7 +623,7 @@ contract PlasmaParent {
         PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
         require(TX.txType == TxTypeFund);
         address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
-        require(signer == operator);
+        require(operators[signer]);
         TransactionOutput memory output0 = TX.outputs[0];
         TransactionOutput memory output1 = TX.outputs[1];
         require(output0.recipient == record.from);
@@ -656,6 +635,9 @@ contract PlasmaParent {
         return true;
     }
     
+// ----------------------------------
+// Withdrawrelated functions
+
     function startWithdraw(uint32 _plasmaBlockNumber, //references and proves ownership on output of original transaction
                             uint32 _plasmaTxNumInBlock, 
                             uint8 _outputNumber,
@@ -694,6 +676,7 @@ contract PlasmaParent {
         require(validProof);
         PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
         require(TX.txType == TxTypeWithdraw);
+        require(TX.txNumberInBlock == _plasmaTxNumInBlock);
         address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
         require(signer == msg.sender);
         TransactionInput memory input = TX.inputs[0];
@@ -709,8 +692,8 @@ contract PlasmaParent {
         return (true, withdrawIndex);
     } 
 
-    function getWithdrawRecordForInput(TransactionInput memory _input) internal returns (WithdrawRecord storage record) {
-        uint256 withdrawIndex = uint256(_input.blockNumber) << ((TxNumberLength + TxTypeLength)*8) + uint256(_input.txNumberInBlock) << (TxTypeLength*8) + uint256(_input.outputNumberInTX);
+    function getWithdrawRecordForInput(TransactionInput memory _input) internal view returns (WithdrawRecord storage record) {
+        uint256 withdrawIndex = makeTransactionIndex(_input.blockNumber, _input.txNumberInBlock, _input.outputNumberInTX);
         record = withdrawRecords[0][withdrawIndex];
         require(record.index == withdrawIndex);
         require(record.blockNumber == _input.blockNumber);
@@ -721,7 +704,7 @@ contract PlasmaParent {
     }
 
     function populateWithdrawRecordForInput(TransactionInput memory _input) internal returns (WithdrawRecord storage record) {
-        uint256 withdrawIndex = uint256(_input.blockNumber) << ((TxNumberLength + TxTypeLength)*8) + uint256(_input.txNumberInBlock) << (TxTypeLength*8) + uint256(_input.outputNumberInTX);
+        uint256 withdrawIndex = makeTransactionIndex(_input.blockNumber, _input.txNumberInBlock, _input.outputNumberInTX);
         record = withdrawRecords[0][withdrawIndex];
         require(record.status == WithdrawStatus.NoRecord);
         record.index = withdrawIndex;
@@ -735,7 +718,7 @@ contract PlasmaParent {
     }
 
     function populateWithdrawRecordFromOutput(TransactionOutput memory _output, uint32 _blockNumber, uint32 _txNumberInBlock, uint8 _outputNumberInTX) internal returns (WithdrawRecord storage record) {
-        uint256 withdrawIndex = uint256(_blockNumber) << ((TxNumberLength + TxTypeLength)*8) + uint256(_txNumberInBlock) << (TxTypeLength*8) + uint256(_outputNumberInTX);
+        uint256 withdrawIndex = makeTransactionIndex(_blockNumber, _txNumberInBlock, _outputNumberInTX);
         record = withdrawRecords[0][withdrawIndex];
         require(record.status == WithdrawStatus.NoRecord);
         record.index = withdrawIndex;
@@ -759,6 +742,78 @@ contract PlasmaParent {
         to.transfer(record.amount);
         return true;
     } 
+
+// ----------------------------------
+// Double-spend related functions
+
+
+// two transactions spend the same input
+    function proveDoubleSpend(uint32 _plasmaBlockNumber1, //references and proves transaction number 1
+                            uint32 _plasmaTxNumInBlock1, 
+                            uint8 _inputNumber1,
+                            bytes _plasmaTransaction1, 
+                            bytes _merkleProof1,
+                            uint32 _plasmaBlockNumber2, //references and proves transaction number 2
+                            uint32 _plasmaTxNumInBlock2, 
+                            uint8 _inputNumber2,
+                            bytes _plasmaTransaction2, 
+                            bytes _merkleProof2) public returns (bool success) {
+        uint256 index1 = makeTransactionIndex(_plasmaBlockNumber1, _plasmaTxNumInBlock1, _inputNumber1);
+        uint256 index2 = makeTransactionIndex(_plasmaBlockNumber2, _plasmaTxNumInBlock2, _inputNumber2);
+        require(index1 != index2);
+        require(!doubleSpendRecords[index1][index2].prooved);
+        require(!doubleSpendRecords[index2][index1].prooved);
+        require(checkActualDoubleSpendProof(_plasmaBlockNumber1,
+                            _plasmaTxNumInBlock1, 
+                            _inputNumber1,
+                            _plasmaTransaction1, 
+                            _merkleProof1,
+                            _plasmaBlockNumber2, 
+                            _plasmaTxNumInBlock2, 
+                            _inputNumber2,
+                            _plasmaTransaction2, 
+                            _merkleProof2));
+        doubleSpendRecords[index1][index2].prooved = true;
+        doubleSpendRecords[index2][index1].prooved = true;
+    }
+
+    function checkActualDoubleSpendProof (uint32 _plasmaBlockNumber1, //references and proves transaction number 1
+                            uint32 _plasmaTxNumInBlock1, 
+                            uint8 _inputNumber1,
+                            bytes _plasmaTransaction1, 
+                            bytes _merkleProof1,
+                            uint32 _plasmaBlockNumber2, //references and proves transaction number 2
+                            uint32 _plasmaTxNumInBlock2, 
+                            uint8 _inputNumber2,
+                            bytes _plasmaTransaction2, 
+                            bytes _merkleProof2) public view returns (bool success) {
+        var (signer1, input1) = getTXdetailsForProof(_plasmaBlockNumber1, _plasmaTxNumInBlock1, _inputNumber1, _plasmaTransaction1, _merkleProof1);
+        var (signer2, input2) = getTXdetailsForProof(_plasmaBlockNumber2, _plasmaTxNumInBlock2, _inputNumber2, _plasmaTransaction2, _merkleProof2);
+        require(signer1 == signer2);
+        require(input1.blockNumber == input2.blockNumber);
+        require(input1.txNumberInBlock == input2.txNumberInBlock);
+        require(input1.outputNumberInTX == input2.outputNumberInTX);
+        return true;
+    }
+
+    function getTXdetailsForProof(uint32 _plasmaBlockNumber, 
+                            uint32 _plasmaTxNumInBlock, 
+                            uint8 _inputNumber,
+                            bytes _plasmaTransaction, 
+                            bytes _merkleProof) internal view returns (address signer, TransactionInput memory input) {
+        Header storage header = headers[uint256(_plasmaBlockNumber)];
+        require(uint32(header.blockNumber) > 0);
+        bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
+        require(validProof);
+        PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
+        require(TX.txType != TxTypeFund);
+        signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+        require(signer != address(0));
+        input = TX.inputs[uint256(_inputNumber)];
+    }
+
+// ----------------------------------
+// Convenience functions
 
     function plasmaTransactionFromBytes(bytes _rawTX) internal view returns (PlasmaTransaction memory TX) {
         uint8 txType = uint8(extract1(_rawTX, TxNumberLength));
@@ -787,7 +842,7 @@ contract PlasmaParent {
 
     function populateInsAndOuts(PlasmaTransaction memory _TX, uint256 _numIns, uint256 _numOuts, bytes memory _insAndOutsSlice) 
         internal view returns (bool success) {
-            uint i;
+            uint256 i;
             for (i = 0; i < _numIns; i++) {
                 bytes memory rawInput = _insAndOutsSlice.slice(i*TransactionInputLength, (i+1)*TransactionInputLength).toBytes();
                 TransactionInput memory input = transactionInputFromBytes(rawInput);
@@ -797,7 +852,7 @@ contract PlasmaParent {
                 bytes memory rawOutput = _insAndOutsSlice.slice(_numIns*TransactionInputLength + i*TransactionOutputLength, 
                                                 _numIns*TransactionInputLength + (i+1)*TransactionOutputLength).toBytes();
                 TransactionOutput memory output = transactionOutputFromBytes(rawOutput);
-                if (output.outputNumberInTX == 255){
+                if (output.outputNumberInTX == 255) {
                     continue;
                 }
                 require(output.outputNumberInTX == i);
@@ -834,4 +889,49 @@ contract PlasmaParent {
         return output;
     }
 
+    function createPersonalMessageTypeHash(bytes memory message) internal view returns (bytes32 msgHash) {
+        bytes memory prefixBytes = "\x19Ethereum Signed Message:\n";
+        bytes memory lengthBytes = message.length.uintToBytes();
+        bytes memory prefix = prefixBytes.concat(lengthBytes);
+        return keccak256(prefix, message);
+    }
+    
+    function recoverTXsigner(bytes memory txData, uint8 v, bytes32 r, bytes32 s, uint256 txType) internal view returns (address signer) {
+        bytes memory sliceNoNumberNoSignatureParts = txData.slice(TxNumberLength, TxLengthForType[txType] - SignatureLength).toBytes();
+        bytes32 persMessageHashWithoutNumber = createPersonalMessageTypeHash(sliceNoNumberNoSignatureParts);
+        signer = ecrecover(persMessageHashWithoutNumber, v, r, s);
+        return signer;
+    }
+
+    function checkProof(bytes32 root, bytes data, bytes proof, bool convertToMessageHash) view public returns (bool) {
+        bytes32 h;
+        if (convertToMessageHash) {
+            h = createPersonalMessageTypeHash(data);
+        } else {
+            h = keccak256(data);
+        }
+        bytes32 elProvided;
+        uint8 rightElementProvided;
+        uint32 loc;
+        uint32 elLoc;
+        for (uint32 i = 32; i <= uint32(proof.length); i += 33) {
+            assembly {
+                loc  := proof 
+                elLoc := add(loc, add(i, 1))
+                elProvided := mload(elLoc)
+            }
+            rightElementProvided = uint8(bytes1(0xff)&proof[i-32]);
+            if (rightElementProvided > 0) {
+                h = keccak256(h, elProvided);
+            } else {
+                h = keccak256(elProvided, h);
+            }
+        }
+        return h == root;
+      }
+    
+    function makeTransactionIndex(uint32 _blockNumber, uint32 _txNumberInBlock, uint8 _outputNumberInTX) pure public returns (uint256 index) { 
+        index = uint256(_blockNumber) << ((TxNumberLength + TxTypeLength)*8) + uint256(_txNumberInBlock) << (TxTypeLength*8) + uint256(_outputNumberInTX);
+        return index;
+    }
 }

@@ -93,14 +93,14 @@ async function populateAccounts(){
     [PlasmaContract].forEach(function(contract) {
         contract.setProvider(web3.currentProvider);
         contract.defaults({
-        gas: 3.5e6,
-        from: allAccounts[2]
+        gas: 6e6,
+        from: plasmaOperatorAddress
         })
     });
 }
 
 async function deployContracts() {
-    DeployedPlasmaContract = await Web3PlasmaContract.deploy({data: PlasmaContract.bytecode}).send({from: plasmaOperatorAddress, gas: 3.5e6}) ;
+    DeployedPlasmaContract = await Web3PlasmaContract.deploy({data: PlasmaContract.bytecode}).send({from: plasmaOperatorAddress, gas: 6e6}) ;
     DeployedPlasmaContract.events.DepositEvent(
         {
         // filter: {myIndexedParam: [20,23], myOtherIndexedParam: '0x123456789...'}, // Using an array means OR: e.g. 20 or 23
