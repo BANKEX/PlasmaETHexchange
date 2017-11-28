@@ -405,6 +405,10 @@ contract PlasmaParent {
         bool prooved;
     }
 
+    struct SpendAndWithdrawRecord {
+        bool prooved;
+    }
+
     struct TransactionInput {
         uint32 blockNumber;
         uint32 txNumberInBlock;
@@ -462,6 +466,8 @@ contract PlasmaParent {
     mapping (uint256 => mapping(uint256 => DepositRecord)) public depositRecords;
     mapping (uint256 => mapping(uint256 => WithdrawRecord)) public withdrawRecords;
     mapping (uint256 => mapping(uint256 => DoubleSpendRecord)) public doubleSpendRecords;
+    mapping (uint256 => mapping(uint256 => SpendAndWithdrawRecord)) public spendAndWithdrawRecords;
+
     mapping (uint256 => Header) public headers;
 
     event DepositEvent(address indexed _from, uint256 indexed _amount, uint256 indexed _depositIndex);
@@ -480,6 +486,7 @@ contract PlasmaParent {
                                 uint8 indexed _outputNumberInTX);       
 
     event DoubleSpendProovedEvent(uint256 indexed _index1, uint256 indexed _index2);
+    event SpendAndWithdrawProovedEvent(uint256 indexed _txIndex, uint256 indexed _withdrawIndex);
                                 
     event Debug(bool indexed _success, bytes32 indexed _b, address indexed _signer);
     event DebugUint(uint256 indexed _1, uint256 indexed _2, uint256 indexed _3);
@@ -747,7 +754,7 @@ contract PlasmaParent {
 // Double-spend related functions
 
 
-// two transactions spend the same input
+// two transactions spend the same output
     function proveDoubleSpend(uint32 _plasmaBlockNumber1, //references and proves transaction number 1
                             uint32 _plasmaTxNumInBlock1, 
                             uint8 _inputNumber1,
@@ -775,6 +782,7 @@ contract PlasmaParent {
                             _merkleProof2));
         doubleSpendRecords[index1][index2].prooved = true;
         doubleSpendRecords[index2][index1].prooved = true;
+        return true;
     }
 
     function checkActualDoubleSpendProof (uint32 _plasmaBlockNumber1, //references and proves transaction number 1
@@ -789,6 +797,8 @@ contract PlasmaParent {
                             bytes _merkleProof2) public view returns (bool success) {
         var (signer1, input1) = getTXdetailsForProof(_plasmaBlockNumber1, _plasmaTxNumInBlock1, _inputNumber1, _plasmaTransaction1, _merkleProof1);
         var (signer2, input2) = getTXdetailsForProof(_plasmaBlockNumber2, _plasmaTxNumInBlock2, _inputNumber2, _plasmaTransaction2, _merkleProof2);
+        require(signer1 != address(0));
+        require(signer2 != address(0));
         require(signer1 == signer2);
         require(input1.blockNumber == input2.blockNumber);
         require(input1.txNumberInBlock == input2.txNumberInBlock);
@@ -796,7 +806,32 @@ contract PlasmaParent {
         return true;
     }
 
-    function getTXdetailsForProof(uint32 _plasmaBlockNumber, 
+// transaction output is withdrawn (witthout express process) and spent in Plasma chain
+    function proveSpendAndWithdraw(uint32 _plasmaBlockNumber, //references and proves transaction
+                            uint32 _plasmaTxNumInBlock, 
+                            uint8 _inputNumber,
+                            bytes _plasmaTransaction, 
+                            bytes _merkleProof,
+                            uint256 _withdrawIndex //references withdraw
+                            ) public returns (bool success) {
+        uint256 txIndex = makeTransactionIndex(_plasmaBlockNumber, _plasmaTxNumInBlock, _inputNumber);
+        require(!spendAndWithdrawRecords[txIndex][_withdrawIndex].prooved);
+        WithdrawRecord storage record = withdrawRecords[0][_withdrawIndex];
+        var (signer, input) = getTXdetailsForProof(_plasmaBlockNumber, _plasmaTxNumInBlock, _inputNumber, _plasmaTransaction, _merkleProof);
+        require(signer != address(0));
+        require(input.blockNumber == record.blockNumber);
+        require(input.txNumberInBlock == record.txNumberInBlock);
+        require(input.outputNumberInTX == record.outputNumberInTX);
+        require(record.status == WithdrawStatus.Completed);
+        spendAndWithdrawRecords[txIndex][_withdrawIndex].prooved = true;
+        SpendAndWithdrawProovedEvent(txIndex, _withdrawIndex);
+        return true;
+    }
+ 
+// ----------------------------------
+// Convenience functions
+
+   function getTXdetailsForProof(uint32 _plasmaBlockNumber, 
                             uint32 _plasmaTxNumInBlock, 
                             uint8 _inputNumber,
                             bytes _plasmaTransaction, 
@@ -812,8 +847,6 @@ contract PlasmaParent {
         input = TX.inputs[uint256(_inputNumber)];
     }
 
-// ----------------------------------
-// Convenience functions
 
     function plasmaTransactionFromBytes(bytes _rawTX) internal view returns (PlasmaTransaction memory TX) {
         uint8 txType = uint8(extract1(_rawTX, TxNumberLength));

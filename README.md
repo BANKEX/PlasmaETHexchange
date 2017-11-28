@@ -10,15 +10,15 @@ Initial implementation of a single server-side "Operator" service (with some ext
 
 Implemented challenges:
 
-1. Deposit -> No deposit published in Plasma chain? -> Start withdrawing for deposit? -> Challenge deposit withdraw? -> Finalize"
-2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw" 
+1. Deposit -> No deposit published in Plasma chain? -> Start withdrawing for deposit? -> Challenge deposit withdraw? -> Finalize
+2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw 
+3. Proove double spending on Plasma chain
+4. Proove spending the same output on Plasma and successfully withdrawing it
 
 Required challenges:
-1. Proof of double spending (start withdrawing and then spending on Plasma or vice-versa)
-2. Plain double spend attack
-3. Proof of funding transaction in Plasma without corresponding deposit in Ethereum network (or duplicate funding TX)
-4. Proof of incorrectly signed TX
-5. Other to follow... 
+1. Proof of funding transaction in Plasma without corresponding deposit in Ethereum network (or duplicate funding TX)
+2. Proof of incorrectly signed TX
+3. Other to follow... 
 
 
 ## What?
