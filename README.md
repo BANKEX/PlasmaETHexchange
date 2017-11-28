@@ -12,11 +12,12 @@ Implemented challenges:
 
 1. Deposit -> No deposit published in Plasma chain? -> Start withdrawing for deposit? -> Challenge deposit withdraw? -> Finalize
 2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw 
-3. Proove double spending on Plasma chain
-4. Proove spending the same output on Plasma and successfully withdrawing it
+3. Prove double spending on Plasma chain
+4. Prove spending the same output on Plasma and successfully withdrawing it
+5. Prove funding without deposit event
 
 Required challenges:
-1. Proof of funding transaction in Plasma without corresponding deposit in Ethereum network (or duplicate funding TX)
+1. Proof of double funding TX
 2. Proof of incorrectly signed TX
 3. Other to follow... 
 

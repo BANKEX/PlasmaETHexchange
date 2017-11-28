@@ -487,7 +487,9 @@ contract PlasmaParent {
 
     event DoubleSpendProovedEvent(uint256 indexed _index1, uint256 indexed _index2);
     event SpendAndWithdrawProovedEvent(uint256 indexed _txIndex, uint256 indexed _withdrawIndex);
-                                
+
+    event FundingWithoutDepositEvent(uint256 indexed _txIndex, uint256 indexed _depositIndex);                 
+
     event Debug(bool indexed _success, bytes32 indexed _b, address indexed _signer);
     event DebugUint(uint256 indexed _1, uint256 indexed _2, uint256 indexed _3);
     event SigEvent(address indexed _signer, bytes32 indexed _r, bytes32 indexed _s);
@@ -629,8 +631,8 @@ contract PlasmaParent {
         require(validProof);
         PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
         require(TX.txType == TxTypeFund);
-        address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
-        require(operators[signer]);
+        // address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+        // require(operators[signer]);
         TransactionOutput memory output0 = TX.outputs[0];
         TransactionOutput memory output1 = TX.outputs[1];
         require(output0.recipient == record.from);
@@ -795,8 +797,8 @@ contract PlasmaParent {
                             uint8 _inputNumber2,
                             bytes _plasmaTransaction2, 
                             bytes _merkleProof2) public view returns (bool success) {
-        var (signer1, input1) = getTXdetailsForProof(_plasmaBlockNumber1, _plasmaTxNumInBlock1, _inputNumber1, _plasmaTransaction1, _merkleProof1);
-        var (signer2, input2) = getTXdetailsForProof(_plasmaBlockNumber2, _plasmaTxNumInBlock2, _inputNumber2, _plasmaTransaction2, _merkleProof2);
+        var (signer1, input1) = getTXinputDetailsFromProof(_plasmaBlockNumber1, _plasmaTxNumInBlock1, _inputNumber1, _plasmaTransaction1, _merkleProof1);
+        var (signer2, input2) = getTXinputDetailsFromProof(_plasmaBlockNumber2, _plasmaTxNumInBlock2, _inputNumber2, _plasmaTransaction2, _merkleProof2);
         require(signer1 != address(0));
         require(signer2 != address(0));
         require(signer1 == signer2);
@@ -817,21 +819,59 @@ contract PlasmaParent {
         uint256 txIndex = makeTransactionIndex(_plasmaBlockNumber, _plasmaTxNumInBlock, _inputNumber);
         require(!spendAndWithdrawRecords[txIndex][_withdrawIndex].prooved);
         WithdrawRecord storage record = withdrawRecords[0][_withdrawIndex];
-        var (signer, input) = getTXdetailsForProof(_plasmaBlockNumber, _plasmaTxNumInBlock, _inputNumber, _plasmaTransaction, _merkleProof);
+        var (signer, input) = getTXinputDetailsFromProof(_plasmaBlockNumber, _plasmaTxNumInBlock, _inputNumber, _plasmaTransaction, _merkleProof);
         require(signer != address(0));
         require(input.blockNumber == record.blockNumber);
         require(input.txNumberInBlock == record.txNumberInBlock);
         require(input.outputNumberInTX == record.outputNumberInTX);
-        require(record.status == WithdrawStatus.Completed);
-        spendAndWithdrawRecords[txIndex][_withdrawIndex].prooved = true;
-        SpendAndWithdrawProovedEvent(txIndex, _withdrawIndex);
+        if (record.status == WithdrawStatus.Completed) {
+            spendAndWithdrawRecords[txIndex][_withdrawIndex].prooved = true;
+            SpendAndWithdrawProovedEvent(txIndex, _withdrawIndex);
+        } else if (record.status == WithdrawStatus.Started) {
+            record.status = WithdrawStatus.Challenged;
+            spendAndWithdrawRecords[txIndex][_withdrawIndex].prooved = true;
+            SpendAndWithdrawProovedEvent(txIndex, _withdrawIndex);    
+        }
         return true;
     }
  
 // ----------------------------------
+// Prove unlawful funding transactions on Plasma
+
+function proveFundingWithoutDeposit(uint32 _plasmaBlockNumber, //references and proves transaction
+                            uint32 _plasmaTxNumInBlock, 
+                            bytes _plasmaTransaction, 
+                            bytes _merkleProof) public returns (bool success) {
+        Header storage header = headers[uint256(_plasmaBlockNumber)];
+        require(uint32(header.blockNumber) > 0);
+        bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
+        require(validProof);
+        PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
+        require(TX.txType == TxTypeFund);
+        address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+        TransactionOutput memory output0 = TX.outputs[0];
+        TransactionOutput memory output1 = TX.outputs[1];
+        require(output1.outputNumberInTX == 255);
+        require(TX.txNumberInBlock == _plasmaTxNumInBlock);
+        uint256 depositIndex = output1.amount;
+        uint256 transactionIndex = makeTransactionIndex(_plasmaBlockNumber, TX.txNumberInBlock, 0);
+        DepositRecord storage record = depositRecords[0][depositIndex];
+        if (record.status == DepositStatus.NoRecord) {
+            FundingWithoutDepositEvent(transactionIndex, depositIndex);
+            return true;
+        } else if (record.amount != output0.amount || record.from != output0.recipient) {
+            FundingWithoutDepositEvent(transactionIndex, depositIndex);
+            return true;
+        }
+        revert();
+        return false;
+    }
+
+
+// ----------------------------------
 // Convenience functions
 
-   function getTXdetailsForProof(uint32 _plasmaBlockNumber, 
+   function getTXinputDetailsFromProof(uint32 _plasmaBlockNumber, 
                             uint32 _plasmaTxNumInBlock, 
                             uint8 _inputNumber,
                             bytes _plasmaTransaction, 
