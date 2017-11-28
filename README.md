@@ -18,9 +18,7 @@ Implemented challenges:
 
 Required challenges:
 1. Proof of double funding TX
-2. Proof of incorrectly signed TX
-3. Other to follow... 
-
+2. Proof of incorrect TX: signature doesn't correspond to spent UTXOs, or amount is invalid. Special check for trying to spend auxilary transaction output of funding transaction.
 
 ## What?
 
