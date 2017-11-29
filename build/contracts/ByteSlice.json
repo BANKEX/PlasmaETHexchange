@@ -1,8 +1,0 @@
-{
-  "contractName": "ByteSlice",
-  "abi": [],
-  "bytecode": "0x60606040523415600e57600080fd5b603580601b6000396000f3006060604052600080fd00a165627a7a72305820b876d927b75e31ed4b484192e940283d01bad95882b254c6f0cca5f898d6fb3a0029",
-  "networks": {},
-  "schemaVersion": "1.0.0",
-  "updatedAt": "2017-11-28T13:37:17.776Z"
-}

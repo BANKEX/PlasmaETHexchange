@@ -2,6 +2,7 @@ const config = require("./config/config");
 const blockPrefix = config.blockPrefix;
 const utxoPrefix = config.utxoPrefix;
 const utxoIncludingAddressPrefix = config.utxoIncludingAddressPrefix;
+const makeAddressIndex = config.makeAddressIndex;
 const headerPrefix = config.headerPrefix;
 const transactionPrefix=config.transactionPrefix;
 const blockTime = config.blockTime;
@@ -120,6 +121,10 @@ module.exports = function(app, levelDB, web3) {
                 if (input && typeof input != "undefined") {
                     const keyForUTXO = Buffer.concat([utxoPrefix, input.blockNumber, input.txNumberInBlock, input.outputNumberInTransaction]);
                     writeRequest.del(keyForUTXO)
+                    if (makeAddressIndex) {
+                        const keyForAddressUTXO = Buffer.concat([utxoIncludingAddressPrefix, input.blockNumber, input.txNumberInBlock, input.outputNumberInTransaction]);
+                        writeRequest.del(keyForAddressUTXO)
+                    }
                 }
             }
             for (let outIndex of [0,1]) {
@@ -127,6 +132,10 @@ module.exports = function(app, levelDB, web3) {
                 if (output && typeof output != "undefined" && !(output.outputNumberInTransaction.equals(Buffer.from('ff', 'hex'))) ) {
                     const keyForUTXO = Buffer.concat([utxoPrefix, block.header.blockNumber, tx.transactionNumberInBlock, output.outputNumberInTransaction]);
                     writeRequest.put(keyForUTXO, Buffer.concat(output.raw))
+                    if (makeAddressIndex) {
+                        const keyForAddressUTXO = Buffer.concat([utxoIncludingAddressPrefix, block.header.blockNumber, tx.transactionNumberInBlock, output.outputNumberInTransaction]);
+                        writeRequest.put(keyForAddressUTXO, Buffer.concat(output.raw))
+                    }
                 }
             }
             const r = tx.raw.filter((f) => {

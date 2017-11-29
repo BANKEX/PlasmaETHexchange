@@ -1,8 +1,0 @@
-{
-  "contractName": "Bytes",
-  "abi": [],
-  "bytecode": "0x60606040523415600e57600080fd5b603580601b6000396000f3006060604052600080fd00a165627a7a72305820153d2ee291c61fc257477ab79158a2a48ea9d8f4d3b5da2d538ab4e2f88c5e230029",
-  "networks": {},
-  "schemaVersion": "1.0.0",
-  "updatedAt": "2017-11-28T13:37:17.784Z"
-}

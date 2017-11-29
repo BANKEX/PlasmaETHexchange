@@ -1,6 +1,8 @@
 const assert = require('assert');
 var fs = require("fs");
 var solc = require('solc');
+var rimraf = require('rimraf');
+rimraf.sync('./build/contracts');
  
 const Artifactor = require("truffle-artifactor"); 
 const TruffleContract = require('truffle-contract');
@@ -13,7 +15,9 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const Contracts = ['PlasmaParent:PlasmaParent']
+const Contracts = {
+  "PlasmaParent" : ["PlasmaParent"]
+}
 
 
 function findImports (path) {
@@ -30,13 +34,13 @@ function findImports (path) {
 
 async function main() {
   console.log("Compiling contracts...");
-  var inputs = {}; 
-    for (contract of Contracts){
-      var parts = contract.split(':');
-      inputs[contract+'.sol'] =  fs.readFileSync("./contracts/"+parts[0]+".sol", 'utf8');
+  let inputs = {}; 
+  let output;
+    for (let contract in Contracts){
+      inputs[contract+'.sol'] =  fs.readFileSync("./contracts/" + contract + '.sol', 'utf8');
     }
     try{ 
-      var output = solc.compile({ sources: inputs }, 1, findImports)
+      output = solc.compile({ sources: inputs }, 1, findImports)
     }
     catch(error){
       console.log(error);
@@ -47,33 +51,50 @@ async function main() {
     if (!output.contracts || Object.keys(output.contracts).length == 0){
       throw("Didn't compile");
     }
-    // new RegExp('__([a-zA-Z.:]+)[_]*', 'g');
-    // const libraryRE = /__([a-zA-Z.:]+)[_]*/g.compile();
     const libraryRE = new RegExp('__([a-zA-Z.:]+)[_]*', 'g');
-    for (var property in output.contracts) {
+    for (let property in output.contracts) {
+      let inList = false;
+      for (let c in Contracts) {
+        for (let cName of Contracts[c]){
+          let fullName = c+".sol:"+cName;
+
+          if (property === fullName){
+            inList = true;
+            break;
+          }
+        }
+        if (inList){
+          break;
+        }
+      }
+      if (!inList){
+        continue;
+      }
       if (output.contracts.hasOwnProperty(property)) {
-        var contract = output.contracts[property];
-        var bytecode = contract.bytecode;
+        let cont = output.contracts[property];
+        let bytecode = cont.bytecode;
         if (libraryRE.test(bytecode)){
           console.log("Linking is necessary!");
           var m;
           m = libraryRE.exec(bytecode);
           while ((m = libraryRE.exec(bytecode)) !== null) {
-            // This is necessary to avoid infinite loops with zero-width matches
             if (m.index === libraryRE.lastIndex) {
               libraryRE.lastIndex++;
             }
-            // The result can be accessed through the `m`-variable.
             const libName = m[1];
             const libObject = {};
             libObject[libName] = output.contracts[libName].bytecode;
           }
         }
-        var meta = JSON.parse(contract.metadata);
         if (bytecode == ""){
           console.log("Bytecode is empty!");
         }
-        var abi = JSON.parse(contract.interface);
+        try{
+          var abi = JSON.parse(cont.interface);
+        }
+        catch(e){
+          console.log(e);
+        }
         const p = property.split(':');
         await artifactor.save({contract_name: p[p.length-1],  abi: abi, unlinked_binary: bytecode});
       }
