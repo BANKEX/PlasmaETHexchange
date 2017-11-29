@@ -7,9 +7,11 @@ const app            = express();
 var router = new Router();
 router.extendExpress(app);
 router.registerAppHelpers(app);
-const comp = require('./compile');
 const bodyParser = require('body-parser');
- 
+app.use(bodyParser.json());
+
+const comp = require('./compile');
+
 const assert = require('assert');
 const moment = require('moment');
 const coinstring = require('coinstring');
@@ -32,31 +34,20 @@ const leveldown = require('leveldown')
 const levelDB = levelup(leveldown('./db'))
 let lastBlock;
 let lastBlockHash;
-
 let blockMiningTimer;
 const config = require('./app/config/config');
-// const privKeys = [fromBtcWif("5JmrM8PB2d5XetmVUCErMZYazBotNzSeMrET26WK8y3m8XLJS98"), 
-//                     fromBtcWif("5HtkDncwskEM5FiBQgU1wqLLbayBmfh5FSMYtLngedr6C6NhvWr")];
-// const plasmaOperatorPrivKey = fromBtcWif("5JMneDeCfBBR1M6mX7SswZvC8axrfxNgoYKtu5DqVokdBwSn2oD");
 const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
 const plasmaOperatorPrivKey = ethUtil.toBuffer(plasmaOperatorPrivKeyHex);
-const plasmaOperatorAddress = config.plasmaOperatorAddress;        
+const plasmaOperatorAddress = config.plasmaOperatorAddress;      
+const testPrivKeys = config.testPrivKeys;  
 const port = 8000;
-app.use(bodyParser.json());
 
-
-
-// var web3 = new Web3(new Web3.providers.WebsocketProvider("ws://localhost:8545"));
-var BigNumber;
 var sendAsyncPromisified;
-var getBlockNumberPromisified;
-var getBalancePromisified;
-var getAccountsPromisified;
 var PlasmaContract;
 var DeployedPlasmaContract;
 var Web3PlasmaContract;
-var allAccounts;
 var web3;
+
 function startVM(){
     var provider = TestRPC.provider({
         total_accounts: 10,
@@ -64,39 +55,21 @@ function startVM(){
         verbose:false,
         gasPrice: 0,
       accounts:[
-          {secretKey:"0x"+fromBtcWif("5JmrM8PB2d5XetmVUCErMZYazBotNzSeMrET26WK8y3m8XLJS98").toString('hex'), balance: 4.2e18},
-          {secretKey:"0x"+fromBtcWif("5HtkDncwskEM5FiBQgU1wqLLbayBmfh5FSMYtLngedr6C6NhvWr").toString('hex'), balance: 4.2e18},
-          {secretKey:"0x"+fromBtcWif("5JMneDeCfBBR1M6mX7SswZvC8axrfxNgoYKtu5DqVokdBwSn2oD").toString('hex'), balance: 4.2e18}    
+          {secretKey:"0x" + plasmaOperatorPrivKey.toString('hex'), balance: 4.2e18},
+          {secretKey:"0x" + testPrivKeys[0].toString('hex'), balance: 4.2e18},
+          {secretKey:"0x" + testPrivKeys[1].toString('hex'), balance: 4.2e18}    
       ],
         mnemonic: "42"
         // ,
         // logger: console
       });
       web3 = new Web3(provider);
-      BigNumber = web3.BigNumber;
       sendAsyncPromisified = util.promisify(provider.sendAsync).bind(provider);
-      var tmp_func = web3.eth.getBalance;
-      delete tmp_func['call'];
-      getBlockNumberPromisified= util.promisify(web3.eth.getBlockNumber);
-      getBalancePromisified = util.promisify(tmp_func).bind(web3.eth);
-    //   DECIMAL_MULTIPLIER_BN = new BigNumber(10**SET_DECIMALS);
-      getAccountsPromisified = util.promisify(web3.eth.getAccounts);
 }
 
 async function populateAccounts(){
-    allAccounts = await web3.eth.getAccounts() ;
-    allAccounts = allAccounts.map((a) => {
-        return a.toLowerCase();
-    })
     PlasmaContract = new TruffleContract(require("./build/contracts/PlasmaParent.json"));
     Web3PlasmaContract = new web3.eth.Contract(PlasmaContract.abi);
-    [PlasmaContract].forEach(function(contract) {
-        contract.setProvider(web3.currentProvider);
-        contract.defaults({
-        gas: 6e6,
-        from: plasmaOperatorAddress
-        })
-    });
 }
 
 async function deployContracts() {
@@ -118,84 +91,9 @@ async function deployContracts() {
     console.log("Deployed at "+ DeployedPlasmaContract._address);
 }
 
-
-function testTx() {
-    const txParams = {
-        blockNumber: "0x00000001",
-        txInBlock: "0x02",
-        assetId: '0x00000003',
-        to: '0x'+ethUtil.privateToAddress(privKeys[1]).toString('hex'), 
-      }
-    const tx = new PlasmaTransaction(txParams);
-    const txhash = tx.hash(false).toString('hex');
-    tx.sign(privKeys[0]); 
-    assert(tx.validate());
-    assert(tx.getSenderAddress().toString('hex') == ethUtil.privateToAddress(privKeys[0]).toString('hex'))
-    return true;  
-}
-
-function createTx(params, privKeyBuffer){
-    const tx = new PlasmaTransaction(params);
-    tx.sign(privKeyBuffer); 
-    const arrayRepr = tx.toJSON();
-    return {
-        blockNumber: arrayRepr[0],
-        txInBlock: arrayRepr[1],
-        assetId: arrayRepr[2],
-        to: arrayRepr[3],
-        v: arrayRepr[4],
-        r: arrayRepr[5],
-        s: arrayRepr[6] 
-    }
-}
-
-
-
-// testTx();
-
-function testBlock() {
-    const txParams = {
-        blockNumber: "0x00000001",
-        txInBlock: "0x02",
-        assetId: '0x00000003',
-        to: '0x'+ethUtil.privateToAddress(privKeys[1]).toString('hex'), 
-      }
-    var TXs = [];
-    for (let i=0; i< 42; i++) {  
-        const tx = new PlasmaTransaction(txParams);
-        tx.sign(privKeys[0]); 
-        TXs.push(tx);
-    }
-    const blockParams = {
-        blockNumber: "0x00000001",
-        parentHash: Buffer.alloc(32),
-        transactions: TXs
-    }
-    const block = new Block(blockParams); 
-    block.sign(privKeys[0]);
-    console.log(block.toJSON())
-    assert(block.validate());
-    assert(block.getSenderAddress().toString('hex') == ethUtil.privateToAddress(privKeys[0]).toString('hex'))
-    var proof = block.merkleTree.getProof(63, false)
-    console.log(proof);
-    return true;  
-}
-
-// testBlock();
-
-
-
-
-
-
- 
-
-
-
-
 app.get('/plasmaParent/lastSubmittedHeader', 'lastSubmittedHeader', async function(req, res){
     try{ 
-        const headerNumber = await DeployedPlasmaContract.methods.lastBlockNumber().call({from:allAccounts[2]});
+        const headerNumber = await DeployedPlasmaContract.methods.lastBlockNumber().call({from:plasmaOperatorAddress});
 
         return res.json({lastSubmittedHeader:headerNumber});
     }
@@ -204,18 +102,10 @@ app.get('/plasmaParent/lastSubmittedHeader', 'lastSubmittedHeader', async functi
     }
 });
 
-
-
-
-
-
 function jump(duration) {
     return async function() {
-    //   console.log("Jumping " + duration + "...");
-
       var params = duration.split(" ");
       params[0] = parseInt(params[0])
-
       var seconds = moment.duration.apply(moment, params).asSeconds();
       await sendAsyncPromisified({
         jsonrpc: "2.0",
@@ -226,52 +116,25 @@ function jump(duration) {
     }
 }
 
-//demo purposes only
-app.post('/finalizeWithdraw', 'finalizeWithdraw', async function(req, res){
-    try{ 
-        const {inEthereumBlock, withdrawIndex} = req.body
-        if (!inEthereumBlock || !withdrawIndex) {
-            return res.json({error: true, reason: "invalid request"});
-            // next()
-        }
-        await jump("2 days")();
-        var result = await DeployedPlasmaContract.methods.finalizeWithdraw(inEthereumBlock, withdrawIndex).send({from:allAccounts[2], gas: 3.6e6});
-        const finalizationEvent = result.events.WithdrawFinalizedEvent; 
-        const response =  {error: false, status: "finalized", to: finalizationEvent.returnValues._to}
-        return res.json(response);
-    }
-    catch(error){
-         res.json({error: true, reason: "invalid request"});
+// app.post('/finalizeWithdraw', 'finalizeWithdraw', async function(req, res){
+//     try{ 
+//         const {inEthereumBlock, withdrawIndex} = req.body
+//         if (!inEthereumBlock || !withdrawIndex) {
+//             return res.json({error: true, reason: "invalid request"});
+//             // next()
+//         }
+//         await jump("2 days")();
+//         var result = await DeployedPlasmaContract.methods.finalizeWithdraw(inEthereumBlock, withdrawIndex).send({from:plasmaOperatorAddress, gas: 3.6e6});
+//         const finalizationEvent = result.events.WithdrawFinalizedEvent; 
+//         const response =  {error: false, status: "finalized", to: finalizationEvent.returnValues._to}
+//         return res.json(response);
+//     }
+//     catch(error){
+//          res.json({error: true, reason: "invalid request"});
  
-    }
-});
+//     }
+// });
 
-
-function sliceRawBufferForTx(buf){
-    assert(buf.length == 94);
-    const txBinArray = [buf.slice(0,4), buf.slice(4,5), buf.slice(5,9), buf.slice(9,29), buf.slice(29,30), buf.slice(30,62), buf.slice(62,94)]
-    return txBinArray;
-}
-
-async function createDummyBlock(){
-    if (lastBlock.readUInt32BE(0) == 0x00000000) {
- 
-        for (let i=0; i< 42; i++) {  
-            const buff = Buffer(1)
-            buff.writeUInt8(i);
-            const txParams = {
-                blockNumber: "0x00000000",
-                txInBlock: '0x'+buff.toString('hex'),
-                assetId: '0x00000000',
-                to: '0x'+ethUtil.privateToAddress(privKeys[1]).toString('hex'), 
-              }
-            const tx = new PlasmaTransaction(txParams);
-            tx.sign(privKeys[0]); 
-            txParamsFIFO.push(tx);
-        }
-        await createBlock();
-    }
-}
 
 async function prepareOracle(){
     await startVM();

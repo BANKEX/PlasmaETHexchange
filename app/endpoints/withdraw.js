@@ -24,7 +24,6 @@ module.exports = function(app, levelDB, web3) {
             const {blockNumber, txNumber, txOutputNumber, from} = req.body
             if (!blockNumber || !from) {
                 return res.json({error: true, reason: "invalid transaction"});
-                // next()
             }
             const txNumberInBlock = txNumber;
             const tx = await getTX(blockNumber, txNumberInBlock);
@@ -35,8 +34,6 @@ module.exports = function(app, levelDB, web3) {
                 tx.transactionTypeUInt() == TxTypeMerge || 
                 tx.transactionTypeUInt() == TxTypeTransfer ||
                 tx.transactionTypeUInt() == TxTypeFund)
-            // const txAddress = ethUtil.bufferToHex(tx.getSenderAddress());
-            // assert(ethUtil.addHexPrefix(from).toLowerCase() === ethUtil.addHexPrefix(txAddress).toLowerCase());
             const preparedProof = await prepareProofsForWithdraw(blockNumber, txNumberInBlock);
             const result = await app.DeployedPlasmaContract.methods.startWithdraw(preparedProof.blockNumber, 
                 preparedProof.txNumberInBlock, req.body.txOutputNumber, preparedProof.tx, preparedProof.merkleProof ).send({from:from, gas: 3.6e6});
@@ -60,7 +57,6 @@ module.exports = function(app, levelDB, web3) {
             const {blockNumber, txNumber, from} = req.body
             if (!blockNumber || !from) {
                 return res.json({error: true, reason: "invalid transaction"});
-                // next()
             }
             const txNumberInBlock = txNumber;
             const blockNumberBuffer = ethUtil.toBuffer(blockNumber)
@@ -70,8 +66,6 @@ module.exports = function(app, levelDB, web3) {
                 return res.json({error: true, reason: "invalid transaction"});
             }
             assert(tx.transactionTypeUInt() == TxTypeWithdraw)
-            // const txAddress = ethUtil.bufferToHex(tx.getSenderAddress());
-            // assert(ethUtil.addHexPrefix(from).toLowerCase() === ethUtil.addHexPrefix(txAddress).toLowerCase());
             const preparedProof = await prepareProofsForWithdraw(blockNumber, txNumberInBlock);
             const result = await app.DeployedPlasmaContract.methods.finalizeWithdrawExpress(preparedProof.blockNumber, 
                 preparedProof.txNumberInBlock, preparedProof.tx, preparedProof.merkleProof ).send({from:from, gas: 3.6e6});

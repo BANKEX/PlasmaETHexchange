@@ -79,8 +79,6 @@ module.exports = function(app, levelDB, web3) {
                 return false;
             })
             for (let i=0; i<TXs.length; i++) {
-                // const txNumBuffer = Buffer.alloc(2);
-                // txNumBuffer.writeUInt16BE(i);
                 TXs[i].assignNumber(i);
             }
             const lastBlockNumber = Web3.utils.toBN(ethUtil.addHexPrefix(lastBlock.toString('hex')));
@@ -151,7 +149,6 @@ module.exports = function(app, levelDB, web3) {
 
         if (spendingTx.blockNumber == 0 || (Buffer.isBuffer(spendingTx.blockNumber) && spendingTx.blockNumber.readUInt32BE(0) == 0) ) {
             return plasmaOperatorAddress.toLowerCase() === ('0x'+spendingTx.getSenderAddress().toString('hex')).toLowerCase();
-            // return plasmaOperatorAddressBuffer.equals(spendingTx.getSenderAddress());
         } else {
             const keyForUnspent = Buffer.concat([utxoPrefix, spendingTx.blockNumber, spendingTx.txInBlock])
             try {
