@@ -8,7 +8,7 @@ Initial implementation of a single server-side "Operator" service (with some ext
 
 ### At the moment the groundwork is done (convenience functions + cryptography) in smart contract to continue writing required processes "Start -> (Challenge?) -> Complete".
 
-Implemented challenges:
+#### Implemented challenges:
 
 1. Deposit -> No deposit published in Plasma chain? -> Start withdrawing for deposit? -> Challenge deposit withdraw? -> Finalize
 2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw
@@ -16,7 +16,7 @@ Implemented challenges:
 4. Prove spending the same output on Plasma and successfully withdrawing it
 5. Prove funding without deposit event
 
-Required challenges:
+#### Required challenges:
 1. Proof of double funding TX
 2. Proof of incorrect TX: signature doesn't correspond to spent UTXOs, or amount is invalid. Special check for trying to spend auxilary transaction output of funding transaction.
 
@@ -55,21 +55,21 @@ Here at BankEx, we believe in the efficiency of offloading of some transactions 
 
 ## Getting Started
 
-### Installation:
-
-#### System requirements:
+### Prerequisites
 
 * Ubuntu or similar is preferable but can also be run on Mac OS X or Windows as well
 * NodeJS version >= 8.9. Tested on 9.0
 
-### Repository Cloning
+### Installing
+
+#### Repository Cloning
 
 ```bash
 git clone https://github.com/BankEx/PlasmaETHexchange.git
 cd PlasmaETHexchange
 ```
 
-### Running
+#### Running
 
 ```bash
 npm install
@@ -96,6 +96,9 @@ Operator (oracle): `0x405aaaa4bdcda14a0af295f3669459b6b0fc8104`
 
 > Will be filled later
 
+## Running the tests
+
+> TBD
 
 ## Code of Conduct
 
@@ -117,12 +120,20 @@ I'd love to see your ideas for improving this library!
 
 * The best way to contribute is by submitting a pull request.
 * Take a inspiration at [Plasma Official page](https://plasma.io/)
-* [Fork](https://github.com/BankEx/PlasmaETHexchange/fork) and [Contribute](https://github.com/BankEx/PlasmaETHexchange/CONTRIBUTING.md) your own modifications
+* [Fork](https://github.com/BankEx/PlasmaETHexchange/fork)
+* Please read [CONTRIBUTING.md](https://github.com/BankEx/PlasmaETHexchange/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+
+## Authors
+
+* **Alex Vlasov** - *Initial work* - [shamatar](https://github.com/shamatar)
+
+See also the list of [contributors](https://github.com/BankEx/PlasmaETHexchange/contributors) who participated in this project.
+
+## Acknowledgments
+
+* Inspired by [Plasma protocol](https://plasma.io/)
+* Given a push to our team on [ETHWaterloo - World's Largest Ethereum Hackathon](https://ethwaterloo.com/)
 
 ## License
 
-GaugeKit is available under the MIT license. See the LICENSE file for more info.
-
-## Contributions
-
-* [shamatar](https://github.com/shamatar)
+PlasmaETHexchange is available under the MIT license. See the LICENSE file for more info.
