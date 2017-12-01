@@ -116,24 +116,7 @@ function jump(duration) {
     }
 }
 
-// app.post('/finalizeWithdraw', 'finalizeWithdraw', async function(req, res){
-//     try{ 
-//         const {inEthereumBlock, withdrawIndex} = req.body
-//         if (!inEthereumBlock || !withdrawIndex) {
-//             return res.json({error: true, reason: "invalid request"});
-//             // next()
-//         }
-//         await jump("2 days")();
-//         var result = await DeployedPlasmaContract.methods.finalizeWithdraw(inEthereumBlock, withdrawIndex).send({from:plasmaOperatorAddress, gas: 3.6e6});
-//         const finalizationEvent = result.events.WithdrawFinalizedEvent; 
-//         const response =  {error: false, status: "finalized", to: finalizationEvent.returnValues._to}
-//         return res.json(response);
-//     }
-//     catch(error){
-//          res.json({error: true, reason: "invalid request"});
- 
-//     }
-// });
+app.jump = jump;
 
 
 async function prepareOracle(){
