@@ -19,6 +19,7 @@ module.exports = function(app, levelDB, web3) {
     const getBlockByNumber = require('../helpers/getBlock')(levelDB);
     const getTX = require('../helpers/getTX')(levelDB);
     const prepareProofsForWithdraw = require('../helpers/prepareProofForTX')(levelDB);
+
     app.post('/startWithdraw', 'startWithdraw', async function(req, res){
         try{ 
             const {blockNumber, txNumber, txOutputNumber, from} = req.body
@@ -79,6 +80,26 @@ module.exports = function(app, levelDB, web3) {
         catch(error){
             res.json({error: true, reason: "invalid transaction"});
     
+        }
+    });
+
+    app.post('/finalizeWithdraw', 'finalizeWithdraw', async function(req, res){
+        try{ 
+            const {withdrawIndex, from} = req.body
+            if (!from || !withdrawIndex) {
+                return res.json({error: true, reason: "invalid request"});
+            }
+            await app.jump("2 days")();
+            var result = await DeployedPlasmaContract.methods.finalizeWithdraw(inEthereumBlock, withdrawIndex).send({from: from, gas: 3.6e6});
+            const finalizationEvent = result.events.WithdrawFinalizedEvent; 
+            const response =  {error: false, status: "accepted", 
+                    withdrawIndex: withdrawFinalizedEvent.returnValues._withdrawIndex,
+                withdrawFinalizedEvent}
+            return res.json(response);
+        }
+        catch(error){
+             res.json({error: true, reason: "invalid request"});
+     
         }
     });
 }

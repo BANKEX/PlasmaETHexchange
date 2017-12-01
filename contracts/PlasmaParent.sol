@@ -363,52 +363,6 @@ contract PlasmaParent {
         bytes32 s;
     }
     
-    enum WithdrawStatus {
-        NoRecord,
-        Started,
-        Challenged,
-        Completed,
-        Rejected
-    }
-
-    enum DepositStatus {
-        NoRecord,
-        Deposited,
-        WithdrawStarted,
-        WithdrawChallenged,
-        WithdrawCompleted,
-        DepositConfirmed
-    }
-
-    struct DepositRecord {
-        address from; 
-        DepositStatus status;
-        uint256 amount; 
-        uint256 index;
-        uint256 withdrawStartedTime;
-    } 
-
-    struct WithdrawRecord {
-        uint256 index;
-        uint32 blockNumber;
-        uint32 txNumberInBlock;
-        uint8 outputNumberInTX;
-        address beneficiary;
-        bool isExpress;
-        WithdrawStatus status;
-        uint256 amount;
-        uint256 timeStarted;
-        uint256 timeEnded;
-    }
-
-    struct DoubleSpendRecord {
-        bool prooved;
-    }
-
-    struct SpendAndWithdrawRecord {
-        bool prooved;
-    }
-
     struct TransactionInput {
         uint32 blockNumber;
         uint32 txNumberInBlock;
@@ -463,32 +417,7 @@ contract PlasmaParent {
         TxMainLength + 1*TransactionInputLength + 2*TransactionOutputLength,
         TxMainLength + 1*TransactionInputLength + 1*TransactionOutputLength];
 
-    mapping (uint256 => mapping(uint256 => DepositRecord)) public depositRecords;
-    mapping (uint256 => mapping(uint256 => WithdrawRecord)) public withdrawRecords;
-    mapping (uint256 => mapping(uint256 => DoubleSpendRecord)) public doubleSpendRecords;
-    mapping (uint256 => mapping(uint256 => SpendAndWithdrawRecord)) public spendAndWithdrawRecords;
-
     mapping (uint256 => Header) public headers;
-
-    event DepositEvent(address indexed _from, uint256 indexed _amount, uint256 indexed _depositIndex);
-    event DepositWithdrawStartedEvent(uint256 indexed _depositIndex);
-    event DepositWithdrawChallengedEvent(uint256 indexed _depositIndex);
-    event DepositWithdrawCompletedEvent(uint256 indexed _depositIndex);
-    
-
-    event WithdrawStartedEvent(uint32 indexed _blockNumber,
-                                uint32 indexed _txNumberInBlock,
-                                uint8 indexed _outputNumberInTX);
-    event WithdrawRequestAcceptedEvent(address indexed _from,
-                                uint256 indexed _withdrawIndex);
-    event WithdrawFinalizedEvent(uint32 indexed _blockNumber,
-                                uint32 indexed _txNumberInBlock,
-                                uint8 indexed _outputNumberInTX);       
-
-    event DoubleSpendProovedEvent(uint256 indexed _index1, uint256 indexed _index2);
-    event SpendAndWithdrawProovedEvent(uint256 indexed _txIndex, uint256 indexed _withdrawIndex);
-
-    event FundingWithoutDepositEvent(uint256 indexed _txIndex, uint256 indexed _depositIndex);                 
 
     event Debug(bool indexed _success, bytes32 indexed _b, address indexed _signer);
     event DebugUint(uint256 indexed _1, uint256 indexed _2, uint256 indexed _3);
@@ -578,6 +507,30 @@ contract PlasmaParent {
 // ----------------------------------
 // Deposit related functions
 
+    enum DepositStatus {
+        NoRecord,
+        Deposited,
+        WithdrawStarted,
+        WithdrawChallenged,
+        WithdrawCompleted,
+        DepositConfirmed
+    }
+
+    struct DepositRecord {
+        address from; 
+        DepositStatus status;
+        uint256 amount; 
+        uint256 index;
+        uint256 withdrawStartedTime;
+    } 
+
+    event DepositEvent(address indexed _from, uint256 indexed _amount, uint256 indexed _depositIndex);
+    event DepositWithdrawStartedEvent(uint256 indexed _depositIndex);
+    event DepositWithdrawChallengedEvent(uint256 indexed _depositIndex);
+    event DepositWithdrawCompletedEvent(uint256 indexed _depositIndex);
+    
+    mapping (uint256 => mapping(uint256 => DepositRecord)) public depositRecords;
+
     function deposit() payable public returns (uint256 idx) {
         if (block.number != lastEthBlockNumber) {
             depositCounterInBlock = 0;
@@ -646,6 +599,38 @@ contract PlasmaParent {
     
 // ----------------------------------
 // Withdrawrelated functions
+
+    enum WithdrawStatus {
+        NoRecord,
+        Started,
+        Challenged,
+        Completed,
+        Rejected
+    }
+
+    struct WithdrawRecord {
+        uint256 index;
+        uint32 blockNumber;
+        uint32 txNumberInBlock;
+        uint8 outputNumberInTX;
+        address beneficiary;
+        bool isExpress;
+        WithdrawStatus status;
+        uint256 amount;
+        uint256 timeStarted;
+        uint256 timeEnded;
+    }
+
+    event WithdrawStartedEvent(uint32 indexed _blockNumber,
+                                uint32 indexed _txNumberInBlock,
+                                uint8 indexed _outputNumberInTX);
+    event WithdrawRequestAcceptedEvent(address indexed _from,
+                                uint256 indexed _withdrawIndex);
+    event WithdrawFinalizedEvent(uint32 indexed _blockNumber,
+                                uint32 indexed _txNumberInBlock,
+                                uint8 indexed _outputNumberInTX);  
+
+    mapping (uint256 => mapping(uint256 => WithdrawRecord)) public withdrawRecords;
 
     function startWithdraw(uint32 _plasmaBlockNumber, //references and proves ownership on output of original transaction
                             uint32 _plasmaTxNumInBlock, 
@@ -755,6 +740,20 @@ contract PlasmaParent {
 // ----------------------------------
 // Double-spend related functions
 
+    struct DoubleSpendRecord {
+        bool prooved;
+    }
+
+    struct SpendAndWithdrawRecord {
+        bool prooved;
+    }
+
+    event DoubleSpendProovedEvent(uint256 indexed _txIndex1, uint256 indexed _txIndex2);
+    event SpendAndWithdrawProovedEvent(uint256 indexed _txIndex, uint256 indexed _withdrawIndex);
+
+    mapping (uint256 => mapping(uint256 => DoubleSpendRecord)) public doubleSpendRecords;
+    mapping (uint256 => mapping(uint256 => SpendAndWithdrawRecord)) public spendAndWithdrawRecords;
+
 
 // two transactions spend the same output
     function proveDoubleSpend(uint32 _plasmaBlockNumber1, //references and proves transaction number 1
@@ -838,6 +837,20 @@ contract PlasmaParent {
 // ----------------------------------
 // Prove unlawful funding transactions on Plasma
 
+    struct FundingWithoutDepositRecord {
+        bool prooved;
+    }
+
+    struct DoubleFundingRecord {
+        bool prooved;
+    }
+
+    mapping (uint256 => mapping(uint256 => FundingWithoutDepositRecord)) public fundingWithoutDepositRecords;
+    mapping (uint256 => mapping(uint256 => DoubleFundingRecord)) public doubleFundingRecords;
+
+    event FundingWithoutDepositEvent(uint256 indexed _txIndex, uint256 indexed _depositIndex);                 
+    event DoubleFundingEvent(uint256 indexed _txIndex1, uint256 indexed _txIndex2);
+
 function proveFundingWithoutDeposit(uint32 _plasmaBlockNumber, //references and proves transaction
                             uint32 _plasmaTxNumInBlock, 
                             bytes _plasmaTransaction, 
@@ -849,24 +862,59 @@ function proveFundingWithoutDeposit(uint32 _plasmaBlockNumber, //references and 
         PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
         require(TX.txType == TxTypeFund);
         address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
-        TransactionOutput memory output0 = TX.outputs[0];
-        TransactionOutput memory output1 = TX.outputs[1];
-        require(output1.outputNumberInTX == 255);
+        TransactionOutput memory output = TX.outputs[0];
+        TransactionOutput memory outputAux = TX.outputs[1];
+        require(outputAux.outputNumberInTX == 255);
         require(TX.txNumberInBlock == _plasmaTxNumInBlock);
-        uint256 depositIndex = output1.amount;
+        uint256 depositIndex = output.amount;
         uint256 transactionIndex = makeTransactionIndex(_plasmaBlockNumber, TX.txNumberInBlock, 0);
+        require(!fundingWithoutDepositRecords[transactionIndex][depositIndex].prooved);
         DepositRecord storage record = depositRecords[0][depositIndex];
         if (record.status == DepositStatus.NoRecord) {
             FundingWithoutDepositEvent(transactionIndex, depositIndex);
+            fundingWithoutDepositRecords[transactionIndex][depositIndex].prooved = true;
             return true;
-        } else if (record.amount != output0.amount || record.from != output0.recipient) {
+        } else if (record.amount != output.amount || record.from != output.recipient) {
             FundingWithoutDepositEvent(transactionIndex, depositIndex);
+            fundingWithoutDepositRecords[transactionIndex][depositIndex].prooved = true;
             return true;
         }
         revert();
         return false;
     }
 
+    //prove double funding of the same 
+
+    function proveDoubleFunding(uint32 _plasmaBlockNumber1, //references and proves transaction number 1
+                            uint32 _plasmaTxNumInBlock1, 
+                            bytes _plasmaTransaction1, 
+                            bytes _merkleProof1,
+                            uint32 _plasmaBlockNumber2, //references and proves transaction number 2
+                            uint32 _plasmaTxNumInBlock2, 
+                            bytes _plasmaTransaction2, 
+                            bytes _merkleProof2) public returns (bool success) {
+        var (signer1, depositIndex1, transactionIndex1) = getFundingTXdetailsFromProof(_plasmaBlockNumber1, _plasmaTxNumInBlock1, _plasmaTransaction1, _merkleProof1);
+        var (signer2, depositIndex2, transactionIndex2) = getFundingTXdetailsFromProof(_plasmaBlockNumber2, _plasmaTxNumInBlock2, _plasmaTransaction2, _merkleProof2);
+        require(checkDoubleFundingFromInternal(signer1, depositIndex1, transactionIndex1, signer2, depositIndex2, transactionIndex2));
+        doubleFundingRecords[transactionIndex1][transactionIndex2].prooved = true;
+        doubleFundingRecords[transactionIndex2][transactionIndex1].prooved = true;
+        return true;
+    }
+
+    function checkDoubleFundingFromInternal (address signer1,
+                                            uint256 depositIndex1,
+                                            uint256 transactionIndex1,
+                                            address signer2,
+                                            uint256 depositIndex2,
+                                            uint256 transactionIndex2) public view returns (bool) {
+        require(operators[signer1]);
+        require(operators[signer2]);
+        require(depositIndex1 == depositIndex2);
+        require(transactionIndex1 != transactionIndex2);
+        require(!doubleFundingRecords[transactionIndex1][transactionIndex2].prooved);
+        require(!doubleFundingRecords[transactionIndex2][transactionIndex1].prooved);
+        return true;
+    }
 
 // ----------------------------------
 // Convenience functions
@@ -887,6 +935,44 @@ function proveFundingWithoutDeposit(uint32 _plasmaBlockNumber, //references and 
         input = TX.inputs[uint256(_inputNumber)];
     }
 
+    function getFundingTXdetailsFromProof(uint32 _plasmaBlockNumber, 
+                            uint32 _plasmaTxNumInBlock, 
+                            bytes _plasmaTransaction, 
+                            bytes _merkleProof) internal view returns (address signer, uint256 depositIndex, uint256 transactionIndex) {
+        Header storage header = headers[uint256(_plasmaBlockNumber)];
+        require(uint32(header.blockNumber) > 0);
+        bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
+        require(validProof);
+        PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
+        require(TX.txType == TxTypeFund);
+        signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+        TransactionOutput memory outputAux = TX.outputs[1];
+        require(outputAux.outputNumberInTX == 255);
+        require(TX.txNumberInBlock == _plasmaTxNumInBlock);
+        depositIndex = outputAux.amount;
+        transactionIndex = makeTransactionIndex(_plasmaBlockNumber, TX.txNumberInBlock, 0);
+        return (signer, depositIndex, transactionIndex);
+    }
+
+    // function getFundingTXdetailsFromProof(uint32 _plasmaBlockNumber, 
+    //                         uint32 _plasmaTxNumInBlock, 
+    //                         bytes _plasmaTransaction, 
+    //                         bytes _merkleProof) internal view returns (address signer, TransactionOutput memory output, uint256 depositIndex, uint256 transactionIndex) {
+    //     Header storage header = headers[uint256(_plasmaBlockNumber)];
+    //     require(uint32(header.blockNumber) > 0);
+    //     bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
+    //     require(validProof);
+    //     PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
+    //     require(TX.txType == TxTypeFund);
+    //     signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+    //     output = TX.outputs[0];
+    //     TransactionOutput memory outputAux = TX.outputs[1];
+    //     require(outputAux.outputNumberInTX == 255);
+    //     require(TX.txNumberInBlock == _plasmaTxNumInBlock);
+    //     depositIndex = outputAux.amount;
+    //     transactionIndex = makeTransactionIndex(_plasmaBlockNumber, TX.txNumberInBlock, 0);
+    //     return (signer, output, depositIndex, transactionIndex);
+    // }
 
     function plasmaTransactionFromBytes(bytes _rawTX) internal view returns (PlasmaTransaction memory TX) {
         uint8 txType = uint8(extract1(_rawTX, TxNumberLength));

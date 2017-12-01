@@ -14,11 +14,10 @@ Implemented challenges:
 2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw 
 3. Prove double spending on Plasma chain
 4. Prove spending the same output on Plasma and successfully withdrawing it
-5. Prove funding without deposit event
+5. Prove funding without deposit event or double funding TX of the same deposit
 
 Required challenges:
-1. Proof of double funding TX
-2. Proof of incorrect TX: signature doesn't correspond to spent UTXOs, or amount is invalid. Special check for trying to spend auxilary transaction output of funding transaction.
+1. Proof of incorrect TX: signature doesn't correspond to spent UTXOs, or amount is invalid. Special check for trying to spend auxilary transaction output of funding transaction.
 
 ## What?
 
