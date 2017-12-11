@@ -345,8 +345,7 @@ contract PlasmaParent {
     using Bytes for *;
     using ByteSlice for *;
     address public owner = msg.sender;
-    mapping(address => bool) operators;
-    // address public operator = msg.sender;
+    mapping(address => bool) public operators;
     uint32 public blockHeaderLength = 137;
     
     uint256 public lastBlockNumber = 0;
@@ -405,6 +404,16 @@ contract PlasmaParent {
     uint256 constant PreviousHashLength = 32;
     uint256 constant MerkleRootHashLength = 32;
     uint256 constant TxAmountLength = 32;
+    bytes constant PersonalMessagePrefixBytes = "\x19Ethereum Signed Message:\n";
+    uint256 constant PreviousBlockPersonalHashLength = BlockNumberLength + 
+                                                    TxNumberLength + 
+                                                    PreviousHashLength + 
+                                                    MerkleRootHashLength + 
+                                                    SignatureLength;
+    uint256 constant NewBlockPersonalHashLength = BlockNumberLength + 
+                                                    TxNumberLength + 
+                                                    PreviousHashLength + 
+                                                    MerkleRootHashLength;
 
     uint256 TransactionOutputLength = 20 + TxOutputNumberLength + TxAmountLength;
     uint256 TransactionInputLength = BlockNumberLength + TxNumberLength + TxOutputNumberLength + TxAmountLength;
@@ -463,6 +472,8 @@ contract PlasmaParent {
         return true;
     }
 
+    event HeaderSubmittedEvent(address indexed _signer, uint32 indexed _blockNumber, bytes32 indexed _blockHash);
+
     function submitBlockHeader(bytes header) public returns (bool success) {
         require(operators[msg.sender]);
         require(header.length == blockHeaderLength);
@@ -478,16 +489,15 @@ contract PlasmaParent {
         require(newBlockNumber == lastBlockNumber+1);
         if (lastBlockNumber != 0) {
             Header storage previousHeader = headers[lastBlockNumber];
-            bytes32 previousHash = keccak256(previousHeader.blockNumber, previousHeader.numTransactions, previousHeader.previousBlockHash, previousHeader.merkleRootHash,
+            bytes32 previousHash = keccak256(PersonalMessagePrefixBytes, PreviousBlockPersonalHashLength.uintToBytes(), previousHeader.blockNumber, previousHeader.numTransactions, previousHeader.previousBlockHash, previousHeader.merkleRootHash,
                                                 previousHeader.v, previousHeader.r,previousHeader.s);
             require(previousHash == previousBlockHash);
         }
-        bytes32 newBlockHash = keccak256(blockNumber, numTransactions, previousBlockHash, merkleRootHash);
+        bytes32 newBlockHash = keccak256(PersonalMessagePrefixBytes, NewBlockPersonalHashLength.uintToBytes(), blockNumber, numTransactions, previousBlockHash, merkleRootHash);
         if (v < 27) {
             v = v+27; 
         }
         address signer = ecrecover(newBlockHash, v, r, s);
-        SigEvent(signer, r, s);
         require(operators[signer]);
         Header memory newHeader = Header({
             blockNumber: blockNumber,
@@ -500,6 +510,7 @@ contract PlasmaParent {
         });
         lastBlockNumber = lastBlockNumber+1;
         headers[lastBlockNumber] = newHeader;
+        HeaderSubmittedEvent(signer, blockNumber, newBlockHash);
         return true;
     }
     
@@ -529,7 +540,16 @@ contract PlasmaParent {
     event DepositWithdrawChallengedEvent(uint256 indexed _depositIndex);
     event DepositWithdrawCompletedEvent(uint256 indexed _depositIndex);
     
+    mapping (address => uint256[]) userDepositRecords;
     mapping (uint256 => mapping(uint256 => DepositRecord)) public depositRecords;
+
+    function () payable external {
+        deposit();
+    }
+
+    function depositRecordsForUser(address _user) public view returns (uint256[]) {
+        return userDepositRecords[_user];
+    }
 
     function deposit() payable public returns (uint256 idx) {
         if (block.number != lastEthBlockNumber) {
@@ -544,58 +564,59 @@ contract PlasmaParent {
         record.amount = msg.value;
         record.status = DepositStatus.Deposited;
         depositCounterInBlock = depositCounterInBlock + 1;
+        userDepositRecords[msg.sender].push(depositIndex);
         DepositEvent(msg.sender, msg.value, depositIndex);
         return depositIndex;
     }
 
-    function startDepositWithdraw(uint256 depositIndex) public returns (bool success) {
-        DepositRecord storage record = depositRecords[0][depositIndex];
-        require(record.index == depositIndex);
-        require(record.status == DepositStatus.Deposited);
-        require(record.from == msg.sender);
-        record.status = DepositStatus.WithdrawStarted;
-        record.withdrawStartedTime = now;
-        DepositWithdrawStartedEvent(depositIndex);
-        return true;
-    }
+    // function startDepositWithdraw(uint256 depositIndex) public returns (bool success) {
+    //     DepositRecord storage record = depositRecords[0][depositIndex];
+    //     require(record.index == depositIndex);
+    //     require(record.status == DepositStatus.Deposited);
+    //     require(record.from == msg.sender);
+    //     record.status = DepositStatus.WithdrawStarted;
+    //     record.withdrawStartedTime = now;
+    //     DepositWithdrawStartedEvent(depositIndex);
+    //     return true;
+    // }
 
-    function finalizeDepositWithdraw(uint256 depositIndex) public returns (bool success) {
-        DepositRecord storage record = depositRecords[0][depositIndex];
-        require(record.index == depositIndex);
-        require(record.status == DepositStatus.WithdrawStarted);
-        require(now >= record.withdrawStartedTime + (24 hours));
-        record.status = DepositStatus.WithdrawCompleted;
-        DepositWithdrawCompletedEvent(depositIndex);
-        record.from.transfer(record.amount);
-        return true;
-    }
+    // function finalizeDepositWithdraw(uint256 depositIndex) public returns (bool success) {
+    //     DepositRecord storage record = depositRecords[0][depositIndex];
+    //     require(record.index == depositIndex);
+    //     require(record.status == DepositStatus.WithdrawStarted);
+    //     require(now >= record.withdrawStartedTime + (24 hours));
+    //     record.status = DepositStatus.WithdrawCompleted;
+    //     DepositWithdrawCompletedEvent(depositIndex);
+    //     record.from.transfer(record.amount);
+    //     return true;
+    // }
 
-    function challengeDepositWithdraw(uint256 depositIndex,
-                            uint32 _plasmaBlockNumber, 
-                            bytes _plasmaTransaction, 
-                            bytes _merkleProof) public returns (bool success) {
-        DepositRecord storage record = depositRecords[0][depositIndex];
-        require(record.index == depositIndex);
-        require(record.status == DepositStatus.WithdrawStarted);
-        record.status = DepositStatus.WithdrawChallenged;
-        Header storage header = headers[uint256(_plasmaBlockNumber)];
-        require(uint32(header.blockNumber) > 0);
-        bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
-        require(validProof);
-        PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
-        require(TX.txType == TxTypeFund);
-        // address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
-        // require(operators[signer]);
-        TransactionOutput memory output0 = TX.outputs[0];
-        TransactionOutput memory output1 = TX.outputs[1];
-        require(output0.recipient == record.from);
-        require(output0.amount == record.amount);
-        require(output1.outputNumberInTX == 255);
-        require(output1.amount == depositIndex);
-        record.status = DepositStatus.DepositConfirmed;
-        DepositWithdrawChallengedEvent(depositIndex);
-        return true;
-    }
+    // function challengeDepositWithdraw(uint256 depositIndex,
+    //                         uint32 _plasmaBlockNumber, 
+    //                         bytes _plasmaTransaction, 
+    //                         bytes _merkleProof) public returns (bool success) {
+    //     DepositRecord storage record = depositRecords[0][depositIndex];
+    //     require(record.index == depositIndex);
+    //     require(record.status == DepositStatus.WithdrawStarted);
+    //     record.status = DepositStatus.WithdrawChallenged;
+    //     Header storage header = headers[uint256(_plasmaBlockNumber)];
+    //     require(uint32(header.blockNumber) > 0);
+    //     bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
+    //     require(validProof);
+    //     PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
+    //     require(TX.txType == TxTypeFund);
+    //     address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+    //     require(operators[signer]);
+    //     TransactionOutput memory output0 = TX.outputs[0];
+    //     TransactionOutput memory output1 = TX.outputs[1];
+    //     require(output0.recipient == record.from);
+    //     require(output0.amount == record.amount);
+    //     require(output1.outputNumberInTX == 255);
+    //     require(output1.amount == depositIndex);
+    //     record.status = DepositStatus.DepositConfirmed;
+    //     DepositWithdrawChallengedEvent(depositIndex);
+    //     return true;
+    // }
     
 // ----------------------------------
 // Withdrawrelated functions
@@ -629,37 +650,46 @@ contract PlasmaParent {
     event WithdrawFinalizedEvent(uint32 indexed _blockNumber,
                                 uint32 indexed _txNumberInBlock,
                                 uint8 indexed _outputNumberInTX);  
+    event ExpressWithdrawMadeEvent(uint32 indexed _withdrawTxBlockNumber,
+                                uint32 indexed _withdrawTxNumberInBlock,
+                                address indexed _from);
 
+    mapping (address => uint256[]) userWithdrawRecords;
     mapping (uint256 => mapping(uint256 => WithdrawRecord)) public withdrawRecords;
 
-    function startWithdraw(uint32 _plasmaBlockNumber, //references and proves ownership on output of original transaction
-                            uint32 _plasmaTxNumInBlock, 
-                            uint8 _outputNumber,
-                            bytes _plasmaTransaction, 
-                            bytes _merkleProof) 
-    public returns(bool success, uint256 withdrawIndex) {
-        Header storage header = headers[uint256(_plasmaBlockNumber)];
-        require(uint32(header.blockNumber) > 0);
-        bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
-        require(validProof);
-        PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
-        require(TX.txType != TxTypeWithdraw);
-        address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
-        require(signer != address(0));
-        TransactionOutput memory output = TX.outputs[_outputNumber];
-        require(output.recipient == msg.sender);
-        require(output.outputNumberInTX != 255);
-        WithdrawRecord storage record = populateWithdrawRecordFromOutput(output, _plasmaBlockNumber, _plasmaTxNumInBlock, _outputNumber);
-        record.beneficiary = output.recipient;
-        record.timeEnded = now;
-        WithdrawRequestAcceptedEvent(output.recipient, record.index);
-        WithdrawStartedEvent(_plasmaBlockNumber, _plasmaTxNumInBlock, _outputNumber);
-        
-        return (true, withdrawIndex);
-    } 
+
+    function withdrawRecordsForUser(address _user) public view returns (uint256[]) {
+        return userWithdrawRecords[_user];
+    }
+
+    // function startWithdraw(uint32 _plasmaBlockNumber, //references and proves ownership on output of original transaction
+    //                         uint32 _plasmaTxNumInBlock, 
+    //                         uint8 _outputNumber,
+    //                         bytes _plasmaTransaction, 
+    //                         bytes _merkleProof) 
+    // public returns(bool success, uint256 withdrawIndex) {
+    //     Header storage header = headers[uint256(_plasmaBlockNumber)];
+    //     require(uint32(header.blockNumber) > 0);
+    //     bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
+    //     require(validProof);
+    //     PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
+    //     require(TX.txType != TxTypeWithdraw);
+    //     address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+    //     require(signer != address(0));
+    //     TransactionOutput memory output = TX.outputs[_outputNumber];
+    //     require(output.recipient == msg.sender);
+    //     require(output.outputNumberInTX != 255);
+    //     WithdrawRecord storage record = populateWithdrawRecordFromOutput(output, _plasmaBlockNumber, _plasmaTxNumInBlock, _outputNumber);
+    //     record.beneficiary = output.recipient;
+    //     record.timeEnded = now;
+    //     WithdrawRequestAcceptedEvent(output.recipient, record.index);
+    //     WithdrawStartedEvent(_plasmaBlockNumber, _plasmaTxNumInBlock, _outputNumber);
+    //     userWithdrawRecords[msg.sender].push(record.index);
+    //     return (true, withdrawIndex);
+    // } 
 
 
-    function finalizeWithdrawExpress(uint32 _plasmaBlockNumber, //references and proves ownership on withdraw transaction
+    function makeWithdrawExpress(uint32 _plasmaBlockNumber, //references and proves ownership on withdraw transaction
                             uint32 _plasmaTxNumInBlock, 
                             bytes _plasmaTransaction, 
                             bytes _merkleProof) 
@@ -674,31 +704,36 @@ contract PlasmaParent {
         address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
         require(signer == msg.sender);
         TransactionInput memory input = TX.inputs[0];
-        WithdrawRecord storage record = getWithdrawRecordForInput(input);
-        require(record.beneficiary == signer);
+        WithdrawRecord storage record = populateWithdrawRecordForInput(input);
+        record.beneficiary = signer;
         require(record.status == WithdrawStatus.Started);
         record.status = WithdrawStatus.Completed;
         record.isExpress = true;
         record.timeEnded = now;
+        WithdrawRequestAcceptedEvent(record.beneficiary, record.index);
+        WithdrawStartedEvent(input.blockNumber, input.txNumberInBlock, input.outputNumberInTX);
         WithdrawFinalizedEvent(input.blockNumber, input.txNumberInBlock, input.outputNumberInTX);
-        
+        ExpressWithdrawMadeEvent(_plasmaBlockNumber, TX.txNumberInBlock, record.beneficiary);
+        userWithdrawRecords[msg.sender].push(record.index);
         signer.transfer(record.amount);
         return (true, withdrawIndex);
     } 
 
-    function getWithdrawRecordForInput(TransactionInput memory _input) internal view returns (WithdrawRecord storage record) {
-        uint256 withdrawIndex = makeTransactionIndex(_input.blockNumber, _input.txNumberInBlock, _input.outputNumberInTX);
-        record = withdrawRecords[0][withdrawIndex];
-        require(record.index == withdrawIndex);
-        require(record.blockNumber == _input.blockNumber);
-        require(record.txNumberInBlock == _input.txNumberInBlock);
-        require(record.outputNumberInTX == _input.outputNumberInTX);
-        require(record.amount == _input.amount);
-        return record;
-    }
+    // function getWithdrawRecordForInput(TransactionInput memory _input) internal view returns (WithdrawRecord storage record) {
+    //     uint256 withdrawIndex = makeTransactionIndex(_input.blockNumber, _input.txNumberInBlock, _input.outputNumberInTX);
+        // withdrawIndex = withdrawIndex + (block.number << 128);
+    //     record = withdrawRecords[0][withdrawIndex];
+    //     require(record.index == withdrawIndex);
+    //     require(record.blockNumber == _input.blockNumber);
+    //     require(record.txNumberInBlock == _input.txNumberInBlock);
+    //     require(record.outputNumberInTX == _input.outputNumberInTX);
+    //     require(record.amount == _input.amount);
+    //     return record;
+    // }
 
     function populateWithdrawRecordForInput(TransactionInput memory _input) internal returns (WithdrawRecord storage record) {
         uint256 withdrawIndex = makeTransactionIndex(_input.blockNumber, _input.txNumberInBlock, _input.outputNumberInTX);
+        // withdrawIndex = withdrawIndex + (block.number << 128);
         record = withdrawRecords[0][withdrawIndex];
         require(record.status == WithdrawStatus.NoRecord);
         record.index = withdrawIndex;
@@ -713,6 +748,7 @@ contract PlasmaParent {
 
     function populateWithdrawRecordFromOutput(TransactionOutput memory _output, uint32 _blockNumber, uint32 _txNumberInBlock, uint8 _outputNumberInTX) internal returns (WithdrawRecord storage record) {
         uint256 withdrawIndex = makeTransactionIndex(_blockNumber, _txNumberInBlock, _outputNumberInTX);
+        // withdrawIndex = withdrawIndex + (block.number << 128);
         record = withdrawRecords[0][withdrawIndex];
         require(record.status == WithdrawStatus.NoRecord);
         record.index = withdrawIndex;
@@ -725,17 +761,17 @@ contract PlasmaParent {
         return record;
     }
 
-    function finalizeWithdraw(uint256 withdrawIndex) public returns(bool success) {
-        WithdrawRecord storage record = withdrawRecords[0][withdrawIndex];
-        require(record.status == WithdrawStatus.Started);
-        require(now >= record.timeStarted + (24 hours));
-        address to = record.beneficiary;
-        record.status = WithdrawStatus.Completed;
-        record.timeEnded = now;
-        WithdrawFinalizedEvent(record.blockNumber, record.txNumberInBlock, record.outputNumberInTX);
-        to.transfer(record.amount);
-        return true;
-    } 
+    // function finalizeWithdraw(uint256 withdrawIndex) public returns(bool success) {
+    //     WithdrawRecord storage record = withdrawRecords[0][withdrawIndex];
+    //     require(record.status == WithdrawStatus.Started);
+    //     require(now >= record.timeStarted + (24 hours));
+    //     address to = record.beneficiary;
+    //     record.status = WithdrawStatus.Completed;
+    //     record.timeEnded = now;
+    //     WithdrawFinalizedEvent(record.blockNumber, record.txNumberInBlock, record.outputNumberInTX);
+    //     to.transfer(record.amount);
+    //     return true;
+    // } 
 
 // ----------------------------------
 // Double-spend related functions
@@ -862,6 +898,7 @@ function proveFundingWithoutDeposit(uint32 _plasmaBlockNumber, //references and 
         PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
         require(TX.txType == TxTypeFund);
         address signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
+        require(operators[signer]);
         TransactionOutput memory output = TX.outputs[0];
         TransactionOutput memory outputAux = TX.outputs[1];
         require(outputAux.outputNumberInTX == 255);
@@ -954,26 +991,6 @@ function proveFundingWithoutDeposit(uint32 _plasmaBlockNumber, //references and 
         return (signer, depositIndex, transactionIndex);
     }
 
-    // function getFundingTXdetailsFromProof(uint32 _plasmaBlockNumber, 
-    //                         uint32 _plasmaTxNumInBlock, 
-    //                         bytes _plasmaTransaction, 
-    //                         bytes _merkleProof) internal view returns (address signer, TransactionOutput memory output, uint256 depositIndex, uint256 transactionIndex) {
-    //     Header storage header = headers[uint256(_plasmaBlockNumber)];
-    //     require(uint32(header.blockNumber) > 0);
-    //     bool validProof = checkProof(header.merkleRootHash, _plasmaTransaction, _merkleProof, true);
-    //     require(validProof);
-    //     PlasmaTransaction memory TX = plasmaTransactionFromBytes(_plasmaTransaction);
-    //     require(TX.txType == TxTypeFund);
-    //     signer = recoverTXsigner(_plasmaTransaction, TX.v, TX.r, TX.s, TX.txType);
-    //     output = TX.outputs[0];
-    //     TransactionOutput memory outputAux = TX.outputs[1];
-    //     require(outputAux.outputNumberInTX == 255);
-    //     require(TX.txNumberInBlock == _plasmaTxNumInBlock);
-    //     depositIndex = outputAux.amount;
-    //     transactionIndex = makeTransactionIndex(_plasmaBlockNumber, TX.txNumberInBlock, 0);
-    //     return (signer, output, depositIndex, transactionIndex);
-    // }
-
     function plasmaTransactionFromBytes(bytes _rawTX) internal view returns (PlasmaTransaction memory TX) {
         uint8 txType = uint8(extract1(_rawTX, TxNumberLength));
         uint256 expectedLength = TxLengthForType[txType];
@@ -1049,9 +1066,10 @@ function proveFundingWithoutDeposit(uint32 _plasmaBlockNumber, //references and 
     }
 
     function createPersonalMessageTypeHash(bytes memory message) internal view returns (bytes32 msgHash) {
-        bytes memory prefixBytes = "\x19Ethereum Signed Message:\n";
+        // bytes memory prefixBytes = "\x19Ethereum Signed Message:\n";
         bytes memory lengthBytes = message.length.uintToBytes();
-        bytes memory prefix = prefixBytes.concat(lengthBytes);
+        // bytes memory prefix = prefixBytes.concat(lengthBytes);
+        bytes memory prefix = PersonalMessagePrefixBytes.concat(lengthBytes);
         return keccak256(prefix, message);
     }
     

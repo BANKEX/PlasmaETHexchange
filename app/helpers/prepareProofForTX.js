@@ -21,14 +21,17 @@ module.exports = function(levelDB) {
     return  async function prepareProofsForTX(blockNumber, txNumberInBlock) {
         const block = await getBlockByNumber(blockNumber);
         const tx = block.transactions[txNumberInBlock];
-        const proof = ethUtil.bufferToHex(Buffer.concat(block.merkleTree.getProof(txNumberInBlock, true)));
+        let proof = ethUtil.bufferToHex(Buffer.concat(block.merkleTree.getProof(txNumberInBlock, true)));
         const raw = tx.raw.filter((r) => {
             return r != undefined;
         })
         const encodedTx = ethUtil.bufferToHex(Buffer.concat(raw))
-        console.log(block.header.merkleRootHash.toString('hex'));
-        console.log(JSON.stringify(encodeForRemix(proof)));
-        console.log(JSON.stringify(encodeForRemix(encodedTx)));
+        // if (proof == "0x") {
+        //     proof = "0x00"
+        // }
+        // console.log(block.header.merkleRootHash.toString('hex'));
+        // console.log(JSON.stringify(encodeForRemix(proof)));
+        // console.log(JSON.stringify(encodeForRemix(encodedTx)));
         return {
             blockNumber: blockNumber,
             txNumberInBlock: txNumberInBlock,

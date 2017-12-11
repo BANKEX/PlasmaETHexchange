@@ -1,9 +1,11 @@
 const config = require("../config/config");
 const ethUtil = require('ethereumjs-util'); 
-const blockPrefix = config.blockPrefix;
-const utxoIncludingAddressPrefix = config.utxoIncludingAddressPrefix;
-const utxoPrefix = config.utxoPrefix;
-const makeAddressIndex = config.makeAddressIndex;
+const {blockPrefix, 
+    utxoIncludingAddressPrefix, 
+    utxoPrefix, 
+    makeAddressIndex,
+    txForAddressIndexPrefix} = config;
+
 const {TransactionOutput} = require("../../lib/Tx/output");
 const {TransactionInput} = require("../../lib/Tx/input");
 const {BlockHeader} = require("../../lib/Block/blockHeader");
@@ -23,13 +25,13 @@ const {blockNumberLength,
 
 module.exports = function(levelDB) {
 
-    if (makeAddressIndex) {
-        return getUTXOforAddressWithIndex;
+    if (config.makeTransactionIndexForAddress) {
+        return getTXsAddressWithIndex;
     } else {
-        return getUTXOforAddress;
+        return getTXsforAddress;
     }
 
-    async function getUTXOforAddress(addressString, cb) {
+    async function getTXsforAddress(addressString, cb) {
         addressString = ethUtil.addHexPrefix(addressString)
         if (!ethUtil.isValidAddress(addressString)){
             cb(true, null);
@@ -55,10 +57,8 @@ module.exports = function(levelDB) {
                 toReturn["blockNumber"] = ethUtil.bufferToInt(data.key.slice(sliceStart, sliceStart + blockNumberLength))
                 toReturn["txNumberInBlock"] = ethUtil.bufferToInt(data.key.slice(sliceStart + blockNumberLength, sliceStart + blockNumberLength + txNumberLength))
                 toReturn["outputNumberInTransaction"] = ethUtil.bufferToInt(data.key.slice(sliceStart + blockNumberLength + txNumberLength, sliceStart + blockNumberLength + txNumberLength + txOutputNumberLength))
-                toReturn["to"] = ethUtil.toChecksumAddress(ethUtil.bufferToHex(out.to))
                 toReturn["value"] = out.value.toString(10);
-                // toReturn["to"] = ethUtil.toChecksumAddress(ethUtil.bufferToHex(out.to))
-                // toReturn['output'] = out;
+                toReturn['output'] = out;
                 utxos.push(toReturn);
             }
         })
@@ -76,36 +76,29 @@ module.exports = function(levelDB) {
         })
     }
 
-    async function getUTXOforAddressWithIndex(addressString, cb) {
+    async function getTXsAddressWithIndex(addressString, cb) {
         addressString = ethUtil.addHexPrefix(addressString)
         if (!ethUtil.isValidAddress(addressString)){
             cb(true, null);
         }
         address = ethUtil.toBuffer(addressString);
         const utxos = [];
-        const start = Buffer.concat([utxoIncludingAddressPrefix,
+        const start = Buffer.concat([txForAddressIndexPrefix,
             address,
             Buffer.alloc(blockNumberLength), 
-            Buffer.alloc(txNumberLength), 
-            Buffer.alloc(txOutputNumberLength)])
-        const stop = Buffer.concat([utxoIncludingAddressPrefix,
+            Buffer.alloc(txNumberLength)])
+        const stop = Buffer.concat([txForAddressIndexPrefix,
             address,
             Buffer.from("ff".repeat(blockNumberLength), 'hex'), 
-            Buffer.from("ff".repeat(txNumberLength), 'hex'),
-            Buffer.from("ff".repeat(txOutputNumberLength), 'hex')])
-        const sliceStart = utxoIncludingAddressPrefix.length + address.length;
+            Buffer.from("ff".repeat(txNumberLength), 'hex'),])
+        const sliceStart = txForAddressIndexPrefix.length + address.length;
         levelDB.createReadStream({gte: start,
                                     lte: stop,
                                     reversed:true})
         .on('data', function (data) {
-            const out = TransactionOutput.prototype.initFromBinaryBlob(data.value);
             toReturn = {};
             toReturn["blockNumber"] = ethUtil.bufferToInt(data.key.slice(sliceStart, sliceStart + blockNumberLength))
             toReturn["txNumberInBlock"] = ethUtil.bufferToInt(data.key.slice(sliceStart + blockNumberLength, sliceStart + blockNumberLength + txNumberLength))
-            toReturn["outputNumberInTransaction"] = ethUtil.bufferToInt(data.key.slice(sliceStart + blockNumberLength + txNumberLength, sliceStart + blockNumberLength + txNumberLength + txOutputNumberLength))
-            toReturn["to"] = ethUtil.toChecksumAddress(ethUtil.bufferToHex(out.to))
-            toReturn["value"] = out.value.toString(10);
-            // toReturn['output'] = out;
             utxos.push(toReturn);
         })
         .on('error', function (err) {

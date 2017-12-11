@@ -8,7 +8,7 @@ module.exports = function(app, levelDB, web3) {
                 return res.json({error: true, reason: "invalid block number"});
             }
             const block = await getBlockByNumber(blockNumber);
-            return res.json(block.toJSON(true))
+            return res.json(block.toFullJSON(true))
         }
         catch(error){
             return res.json({error: true, reason: "invalid block number"});

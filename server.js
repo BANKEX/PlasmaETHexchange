@@ -1,9 +1,13 @@
-const express        = require('express');
+const config = require('./app/config/config');
 var rimraf = require('rimraf');
-rimraf.sync('./db');
-console.log("Cleared DB");
-var Router = require('named-routes');
+if (!config.testOnRinkeby) {
+    rimraf.sync('./db');
+    console.log("Cleared DB");
+}
+
+const express        = require('express');
 const app            = express();
+var Router = require('named-routes');
 var router = new Router();
 router.extendExpress(app);
 router.registerAppHelpers(app);
@@ -24,32 +28,42 @@ const TruffleContract = require('truffle-contract');
 var TestRPC = require("ethereumjs-testrpc");
  
 const Web3 = require("web3");
+const BN = Web3.utils.BN;
 const util = require('util');
-var ethUtil = require('ethereumjs-util'); 
+const ethUtil = require('ethereumjs-util'); 
 const PlasmaTransaction = require('./lib/Tx/tx');
 const Block = require('./lib/Block/block');
 const fromBtcWif = coinstring.createDecoder(0x80);
 const levelup = require('levelup')
 const leveldown = require('leveldown')
 const levelDB = levelup(leveldown('./db'))
+
 let lastBlock;
 let lastBlockHash;
 let blockMiningTimer;
-const config = require('./app/config/config');
+const {blockNumberLength} = require("./lib/dataStructureLengths");
+
 const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
 const plasmaOperatorPrivKey = ethUtil.toBuffer(plasmaOperatorPrivKeyHex);
 const plasmaOperatorAddress = config.plasmaOperatorAddress;      
 const testPrivKeys = config.testPrivKeys;  
 const port = 8000;
 
-var sendAsyncPromisified;
-var PlasmaContract;
-var DeployedPlasmaContract;
-var Web3PlasmaContract;
-var web3;
+let sendAsyncPromisified;
+let PlasmaContract;
+let DeployedPlasmaContract;
+let Web3PlasmaContract;
+let web3;
 
-function startVM(){
-    var provider = TestRPC.provider({
+async function startVM(){
+    if (config.testOnRinkeby) {
+        web3 = new Web3(config.provider);
+        let unlocked = await web3.eth.personal.unlockAccount(config.plasmaOperatorAddress, config.plasmaOperatorPassword, 0);
+        let provider = web3.currentProvider;
+        sendAsyncPromisified = util.promisify(provider.send).bind(provider);
+        return;
+    }
+    let provider = TestRPC.provider({
         total_accounts: 10,
         time:new Date(),
         verbose:false,
@@ -64,43 +78,30 @@ function startVM(){
         // logger: console
       });
       web3 = new Web3(provider);
+
       sendAsyncPromisified = util.promisify(provider.sendAsync).bind(provider);
 }
 
-async function populateAccounts(){
-    PlasmaContract = new TruffleContract(require("./build/contracts/PlasmaParent.json"));
-    Web3PlasmaContract = new web3.eth.Contract(PlasmaContract.abi);
-}
+
 
 async function deployContracts() {
-    DeployedPlasmaContract = await Web3PlasmaContract.deploy({data: PlasmaContract.bytecode}).send({from: plasmaOperatorAddress, gas: 6e6}) ;
-    DeployedPlasmaContract.events.DepositEvent(
-        {
-        // filter: {myIndexedParam: [20,23], myOtherIndexedParam: '0x123456789...'}, // Using an array means OR: e.g. 20 or 23
-        fromBlock: 0
-        // fromBlock:0, 
-        // toBlock:'latest'
-    })
-    .on('data', function(event){
-        processDepositEvent(event);
-    })
-    .on('changed', function(event){
-        // remove event from local database
-    })
-    .on('error', console.error);
+    PlasmaContract = new TruffleContract(require("./build/contracts/PlasmaParent.json"));
+    if (config.testOnRinkeby) {
+        if (config.deployedPlasmaContract == "") {
+            Web3PlasmaContract = new web3.eth.Contract(PlasmaContract.abi, {from: config.plasmaOperatorAddress, gasPrice: 35e9});
+            DeployedPlasmaContract = await Web3PlasmaContract.deploy({data: PlasmaContract.bytecode}).send({from: config.plasmaOperatorAddress, gas: 6e6});
+            console.log("Deployed at "+ DeployedPlasmaContract._address);
+            return;
+        }
+        DeployedPlasmaContract = new web3.eth.Contract(PlasmaContract.abi, config.deployedPlasmaContract,{from: config.plasmaOperatorAddress, gasPrice: 35e9});
+        return;
+    }
+    Web3PlasmaContract = new web3.eth.Contract(PlasmaContract.abi, {from: config.plasmaOperatorAddress});
+    DeployedPlasmaContract = await Web3PlasmaContract.deploy({data: PlasmaContract.bytecode}).send({from: plasmaOperatorAddress, gas: 6e6});
     console.log("Deployed at "+ DeployedPlasmaContract._address);
 }
 
-app.get('/plasmaParent/lastSubmittedHeader', 'lastSubmittedHeader', async function(req, res){
-    try{ 
-        const headerNumber = await DeployedPlasmaContract.methods.lastBlockNumber().call({from:plasmaOperatorAddress});
 
-        return res.json({lastSubmittedHeader:headerNumber});
-    }
-    catch(error){
-         return res.json({error: true, reason: "invalid request"});
-    }
-});
 
 function jump(duration) {
     return async function() {
@@ -122,14 +123,12 @@ app.jump = jump;
 async function prepareOracle(){
     await startVM();
     await comp();
-    await populateAccounts();
     await deployContracts();
     try{
         lastBlock = await levelDB.get('lastBlockNumber');
     }
     catch(error) {
-        lastBlock = Buffer.alloc(4)
-        lastBlock.writeUInt32BE(0,0);
+        lastBlock = ethUtil.setLengthLeft(ethUtil.toBuffer(new BN(0)),blockNumberLength)
         await levelDB.put('lastBlockNumber', lastBlock);
     }
     try{
@@ -141,23 +140,31 @@ async function prepareOracle(){
     }
     app.txQueueArray = [];
     app.DeployedPlasmaContract = DeployedPlasmaContract;
+    const processDepositEvent = require('./app/helpers/processDepositEvent')(app, levelDB, web3);
+    const processExpressWithdrawMakeEvent = require('./app/helpers/processExpressWithdrawMadeEvent')(app, levelDB, web3);
+    app.processDepositEvent = processDepositEvent;
+    app.processExpressWithdrawMakeEvent = processExpressWithdrawMakeEvent;
     require('./app/miner')(app, levelDB, web3);
     require('./app/endpoints/fundPlasma')(app, levelDB, web3);
     require('./app/endpoints/acceptAndSignTransaction')(app, levelDB, web3);
+    require('./app/endpoints/createTransactionToSign')(app,levelDB,web3);
+    require('./app/endpoints/acceptSignedTX')(app, levelDB, web3);
     require('./app/endpoints/getBlockByNumber')(app, levelDB, web3);
+    require('./app/endpoints/getTxByNumber')(app, levelDB, web3);
     require('./app/endpoints/getUTXOsForAddress')(app, levelDB, web3);
+    require('./app/endpoints/getTXsForAddress')(app, levelDB, web3);
+    require('./app/endpoints/getWithdrawsForAddress')(app, levelDB, web3);
     require('./app/endpoints/withdraw')(app, levelDB, web3);
     require('./app/endpoints/auxilary')(app, levelDB, web3);
+    require('./app/endpoints/prepareProofForExpressWithdraw')(app, levelDB, web3);
 }
 
 prepareOracle().then((result) => {
     app.listen(port, async () => {
-        
         console.log('We are live on ' + port);
         console.log(config.testAccounts[0])
         console.log(config.testAccounts[1])
-        console.log("Operator address = 0x"+ ethUtil.privateToAddress(plasmaOperatorPrivKey).toString('hex'))
-
+        console.log("Operator address = " + config.plasmaOperatorAddress);
         app._router.stack.forEach(function(r){
         if (r.name && r.name == 'bound dispatch'){
             console.log(r.route.path)

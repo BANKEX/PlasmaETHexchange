@@ -20,6 +20,8 @@ module.exports = function(app, levelDB, web3) {
     const getTX = require('../helpers/getTX')(levelDB);
     const prepareProofsForWithdraw = require('../helpers/prepareProofForTX')(levelDB);
 
+
+
     app.post('/startWithdraw', 'startWithdraw', async function(req, res){
         try{ 
             const {blockNumber, txNumber, txOutputNumber, from} = req.body
@@ -68,7 +70,7 @@ module.exports = function(app, levelDB, web3) {
             }
             assert(tx.transactionTypeUInt() == TxTypeWithdraw)
             const preparedProof = await prepareProofsForWithdraw(blockNumber, txNumberInBlock);
-            const result = await app.DeployedPlasmaContract.methods.finalizeWithdrawExpress(preparedProof.blockNumber, 
+            const result = await app.DeployedPlasmaContract.methods.makeWithdrawExpress(preparedProof.blockNumber, 
                 preparedProof.txNumberInBlock, preparedProof.tx, preparedProof.merkleProof ).send({from:from, gas: 3.6e6});
             const withdrawFinalizedEvent = result.events.WithdrawFinalizedEvent;
             console.log(withdrawFinalizedEvent);
@@ -79,7 +81,6 @@ module.exports = function(app, levelDB, web3) {
         }
         catch(error){
             res.json({error: true, reason: "invalid transaction"});
-    
         }
     });
 

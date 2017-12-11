@@ -29,6 +29,7 @@
     "rimraf": "^2.6.2",
     "scrypt": "^6.0.3",
     "solc": "^0.4.18",
+    "strip-hex-prefix": "^1.0.0",
     "truffle-artifactor": "^3.0.0",
     "truffle-contract": "^3.0.1",
     "web3": "^1.0.0-beta.24"

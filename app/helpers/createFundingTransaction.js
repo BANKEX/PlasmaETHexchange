@@ -14,8 +14,8 @@ const {blockNumberLength,
     txAmountLength,
     txToAddressLength} = require('../../lib/dataStructureLengths');
 
-const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
-const plasmaOperatorPrivKey = ethUtil.toBuffer(plasmaOperatorPrivKeyHex);
+// const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
+// const plasmaOperatorPrivKey = ethUtil.toBuffer(plasmaOperatorPrivKeyHex);
 const {PlasmaTransaction,
     TxTypeFund, 
     TxTypeMerge, 
@@ -62,6 +62,8 @@ module.exports = function createFundingTransaction(toAddressString, amountBN, de
         outputNum1: Buffer.concat(auxOutput.raw)
     }
     const tx = new PlasmaTransaction(txParams);
-    tx.sign(plasmaOperatorPrivKey); 
     return tx;
+
+    // tx.sign(plasmaOperatorPrivKey); 
+    // return tx;
 }

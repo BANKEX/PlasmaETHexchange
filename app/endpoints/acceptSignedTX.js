@@ -39,34 +39,41 @@ const transactionSchema =
             }
         }
     },
-    "required": ["txType", "inputs"]
+    "signature" : {"type" : "string", "minLength" :130, "maxLength" : 132},
+    "required": ["txType", "inputs", "signature"]
 }
 module.exports = function(app, levelDB, web3) {
     const createTxFromJSON = require('../helpers/createTxFromJson')(levelDB);
     const createWithdrawTxFromJSON = require('../helpers/createWithdrawTxFromJson')(levelDB);
-    app.post('/createTX', 'createTX', async function(req, res){
+    const checkSpendingTX = require('../helpers/checkSpendingTX')(levelDB);
+    app.post('/sendSignedTX', 'endSignedTX', async function(req, res){
         try{ 
             if (!validateSchema(req.body, transactionSchema).valid) {
                 return res.json({error: true, reason: "invalid transaction"});
             }
+            const txParams = req.body;
+            const signature = req.body.signature;
+            delete txParams.signature;
             let tx;
             if (req.body.txType == TxTypeMerge || req.body.txType == TxTypeSplit || req.body.txType == TxTypeTransfer) {
                 tx = await createTxFromJSON(req.body);
             } else {
                 tx = await createWithdrawTxFromJSON(req.body);
             }
-            const txErrors = tx.validate(true);
-            assert(txErrors=='Invalid Signature');
-            const txRawNoNumber = Buffer.concat(tx.clearRaw(false, false));
+            tx.serializeSignature(signature);
+            const validSpending = await checkSpendingTX(tx);
+            assert(validSpending);
+            const txHash = tx.hash(false, false);
+            const pubKey = ethUtil.ecrecover(txHash, ethUtil.bufferToInt(tx.v), tx.r, tx.s);
+            const signedFromAddress = ethUtil.publicToAddress(pubKey).toString('hex');
+            console.log("Accepted TX from address 0x" + signedFromAddress);
+            const txIsValid = tx.validate(false);
+            assert(txIsValid);
+            app.txQueueArray.push(tx);
+            console.log("Pushed new TX")
             const txJSONrepresentation = tx.toFullJSON(true);
-            const prefix = ethUtil.toBuffer("\x19Ethereum Signed Message:\n" + txRawNoNumber.length)
-            const stringToSign = prefix.toString('hex') + txRawNoNumber.toString('hex');
-            const txPersonalHash = tx.hash(false, false);
             return res.json({error: false, 
-                tx: txJSONrepresentation, 
-                txHex: "0x"+txRawNoNumber.toString('hex'),
-                txPersonalHash: "0x"+txPersonalHash.toString('hex'),
-                txPersonalMessage: "0x"+stringToSign});
+                tx: txJSONrepresentation});
         }
         catch(error){
             res.json({error: true, reason: "invalid transaction"});

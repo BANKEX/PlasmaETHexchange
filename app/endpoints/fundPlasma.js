@@ -31,7 +31,7 @@ module.exports = function(app, levelDB, web3) {
                 return res.json({error: true, reason: "invalid transaction"});
             }
             const depositEvent = result.events.DepositEvent
-            processDepositEvent(depositEvent)
+            // processDepositEvent(depositEvent)
             return res.json({error: false, depositEvent});
         }
         catch(error){
@@ -39,25 +39,7 @@ module.exports = function(app, levelDB, web3) {
         }
     });
 
-    app.get('/plasmaParent/depositRecord/:recordID', 'getDepositRecord', async function(req, res){
-        try{ 
-            let index = Web3.utils.toBN(req.params.recordID);
-            // if (Web3.utils.isHex(req.params.recordID)) {
-            //     index = ethUtil.addHexPrefix(req.params.recordID);
-            //     index = 
-            // }
-            // index = new BN(req.params.recordID, 16);
-            if (!index){
-                return res.json({error: true, reason: "invalid record index number"});
-            }
-            var header = await app.DeployedPlasmaContract.methods.depositRecords(0,index).call({from: plasmaOperatorAddress});
-            return res.json(header)
-        }
-        catch(error){
-            res.json({error: true, reason: "invalid address"});
-        }
-    });
-    
+
     app.post('/startDepositWithdraw', 'fundPlasma', async function(req, res){
         try{ 
             const {from, depositIndex} = req.body

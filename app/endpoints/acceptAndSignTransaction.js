@@ -43,17 +43,14 @@ module.exports = function(app, levelDB, web3) {
                 return res.json({error: true, reason: "invalid transaction"});
             } 
             const tx = await createTxFromJSON(req.body);
-            const privKey = testPrivKeys[idxInKeys];
-            tx.sign(privKey);
+            let txRaw = ethUtil.bufferToHex(Buffer.concat(tx.clearRaw(false, false)));
+            let txHash = ethUtil.bufferToHex(tx.hash(false,false));
+            const signature = await web3.eth.sign(txRaw, from);
+            const signature2 = await web3.eth.sign(txHash, from);
+            tx.serializeSignature(signature);
             if (!tx.validate()){
                 return res.json({error: true, reason: "invalid transaction"});
             }
-            // const test = tx.hash(true, false);
-            // console.log(ethUtil.bufferToHex(test))
-            // const testWithNumber = tx.hash(true, true);
-            // console.log(ethUtil.bufferToHex(testWithNumber));
-            // const testNoSigNoNumber = tx.hash(false, false);
-            // console.log(ethUtil.bufferToHex(testNoSigNoNumber));
             app.txQueueArray.push(tx);
             console.log("Pushed new TX")
             return res.json({error: false, status: "accepted"});
