@@ -2,6 +2,30 @@
 
 # WIP!
 
+# Public beta 1 features
+
+Public beta will be deployed on Rinkeby network. Link: TBA
+
+For Beta 1 only basic functions are enabled with non-optimized UI:
+1. Deposit on a main chain
+2. Transact in Plasma chain - split, merge, transfer, express withdraw
+3. Only express withdraw is allowed for user experience - it's a two step process: 
+    
+    Burn ETH in Plasma by submitting output to address 0x0
+
+    Submit proof of such transaction to the smart contract on main chain to withdraw on a main chain
+
+## Important features and limitations
+- Function of Web3 to sign arbitrary data is used to proof your ownership on the address.
+- #### Signature format is different from the signature format of Ethereum transactions and any derived transaction can not be used to make fraudlent transaction on the main chain
+
+- Sum of the outputs is strictly equal to the sum on the inputs
+
+- As there is no standalone client to download and verify blocks, so there is no functionality to proof invalid transactions using the smart contract on a main chain. Wait until Beta 2
+
+- UTXOs are not automatically merged in Beta 1
+
+
 # Clarification
 
 Initial implementation of a single server-side "Operator" service (with some extra functionality for testing) and v0.1 smart contract for Ethereum blockchain that can be used to enforce proper behavior in case of disputes.
