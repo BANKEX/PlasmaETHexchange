@@ -8,15 +8,15 @@ Initial implementation of a single server-side "Operator" service (with some ext
 
 ### At the moment the groundwork is done (convenience functions + cryptography) in smart contract to continue writing required processes "Start -> (Challenge?) -> Complete".
 
-Implemented challenges:
+#### Implemented challenges:
 
 1. Deposit -> No deposit published in Plasma chain? -> Start withdrawing for deposit? -> Challenge deposit withdraw? -> Finalize
-2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw 
+2. Deposit -> Do few transactions -> Start UTXO withdraw -> Express withdraw / Normal withdraw
 3. Prove double spending on Plasma chain
 4. Prove spending the same output on Plasma and successfully withdrawing it
 5. Prove funding without deposit event or double funding TX of the same deposit
 
-Required challenges:
+#### Required challenges:
 1. Proof of incorrect TX: signature doesn't correspond to spent UTXOs, or amount is invalid. Special check for trying to spend auxilary transaction output of funding transaction.
 
 ## What?
@@ -33,10 +33,10 @@ From a technical point of view Plasma blockchain - is just another blockchain, t
 
 Plasma chain itself has a straightforward structure with assets being undividable and transferred in full from the previous owner to the next one. The transaction has inputs and outputs, with few different types of transactions depending on the required function. For example, we propose type "Merge" to connect two inputs into one output in order to reduce the number of UTXOs that will be followed by the client. Full description will be given when the design is more stable. All chain logic is made using Ethereum crypto primitives - sha3, secp256k1 and 65-byte signatures allowing the use of ecrecover.
 
-Block in Plasma network has a structure of Header: ```[BlockNumber, NumberOfTransactions, ParentHash, MerkleTreeRoot, PlasmaOperatorSignature]```, where 
+Block in Plasma network has a structure of Header: ```[BlockNumber, NumberOfTransactions, ParentHash, MerkleTreeRoot, PlasmaOperatorSignature]```, where
 
 - `ParentHash` references to the previous block (by number)
-- `MerkleTreeRoot` is root hash of a Merkle tree 
+- `MerkleTreeRoot` is root hash of a Merkle tree
 - `NumberOfTransactions` transactions in this Plasma block and an array of transactions.
 
 The header is submitted by Plasma network operator to the smart-contract on Ethereum chain. Blocks can only be sent one by one, with sequence numbering is enforced by contract. Any user of Ethereum network can deposit ETH to contract that will trigger, event and will allow Plasma network operator to make a funding transaction in a Plasma chain. Then users can freely transact in Plasma chain, with headers pushed to a parent contract in Ethereum.
@@ -52,21 +52,23 @@ The concept is implemented using JS with conjunction on [Web3](https://github.co
 
 Here at BankEx, we believe in the efficiency of offloading of some transactions from Ethereum blockchain to Plasma chains especially if the proper incentive is present for Plasma operators to behave appropriately (such incentive can be presented in the form of competing with other operators for obtaining end-users). Another advantage is a flexibility of Plasma chain implementation as long as it can be effectively cross-checked by contract on a parent chain. With the new cryptographic primitive added in Metropolis fork, one can extend our PoC implementation with transactions utilizing ring signatures of **zkSNARK**s for the privacy of end user.
 
-### Installation:
+## Getting Started
 
-#### System requirements:
+### Prerequisites
 
 * Ubuntu or similar is preferable but can also be run on Mac OS X or Windows as well
 * NodeJS version >= 8.9. Tested on 9.0
 
-### Repository Cloning
+### Installing
+
+#### Repository Cloning
 
 ```bash
 git clone https://github.com/BankEx/PlasmaETHexchange.git
 cd PlasmaETHexchange
 ```
 
-### Running
+#### Running
 
 ```bash
 npm install
@@ -93,6 +95,44 @@ Operator (oracle): `0x405aaaa4bdcda14a0af295f3669459b6b0fc8104`
 
 > Will be filled later
 
-## Contributions
+## Running the tests
 
-* [shamatar](https://github.com/shamatar)
+> TBD
+
+## Code of Conduct
+
+In order to have a more open and welcoming community, BankEx adheres to a
+[code of conduct](CODE_OF_CONDUCT.md).
+
+## Communication :speaker:
+
+Bug reports, feature requests, patches, well-wishes are always welcome!
+
+- If you need help, [open an issue](https://github.com/BankEx/PlasmaETHexchange/issues/new).
+- If you found a bug, [open an issue](https://github.com/BankEx/PlasmaETHexchange/issues/new).
+- If you have a feature request, [open an issue](https://github.com/BankEx/PlasmaETHexchange/issues/new).
+- If you want to contribute, see [Contributing](https://github.com/BankEx/PlasmaETHexchange#contributing-octocat) section.
+
+## Contributing :octocat:
+
+I'd love to see your ideas for improving this library!
+
+* The best way to contribute is by submitting a pull request.
+* Take a inspiration at [Plasma Official page](https://plasma.io/)
+* [Fork](https://github.com/BankEx/PlasmaETHexchange/fork)
+* Please read [CONTRIBUTING.md](https://github.com/BankEx/PlasmaETHexchange/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+
+## Authors
+
+* **Alex Vlasov** - *Initial work* - [shamatar](https://github.com/shamatar)
+
+See also the list of [contributors](https://github.com/BankEx/PlasmaETHexchange/contributors) who participated in this project.
+
+## Acknowledgments
+
+* Inspired by [Plasma protocol](https://plasma.io/)
+* Given a push to our team on [ETHWaterloo - World's Largest Ethereum Hackathon](https://ethwaterloo.com/)
+
+## License
+
+PlasmaETHexchange is available under the MIT license. See the LICENSE file for more info.
