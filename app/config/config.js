@@ -26,8 +26,8 @@ module.exports = {
     },
     get deployedPlasmaContract(){
         if (this.testOnRinkeby){
-            return "0xd8AC480331870c5764b5430F854926b1cfd1d8B1"
-            // return "0x158cb5485ea2e7fe03845d45c40c63469814bd9a"
+            // return "0xd8AC480331870c5764b5430F854926b1cfd1d8B1"
+            return "0x158cb5485ea2e7fe03845d45c40c63469814bd9a"
             return ""
         } return "";
     },

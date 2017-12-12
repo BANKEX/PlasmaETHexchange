@@ -343,33 +343,19 @@ module.exports = function(app, levelDB, web3) {
         }
     }
 
+
     async function tryToMine() {
         const mined = await createBlock();
-        if (mined) {
-            clearTimeout(blockMiningTimer);
-            blockMiningTimer = setTimeout(async () => {
-                tryToMine()
-            }, blockTime);
-            return
-        }
-        else{
-            if (blockMiningTimer._called && blockMiningTimer._destroyed) {
-                blockMiningTimer = setTimeout(async () => {
-                    tryToMine()
-                }, blockTime);
-            }
-            return;
-        }
+        setTimeout(tryToMine, blockTime)
+        return true
     }
 
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
       }
-
-    let blockMiningTimer = setTimeout(async () => {
-        tryToMine()
-    }, blockTime);
-
+    tryToMine.then((res) => {
+        console.log("Started mining loop")
+    })
     levelDB.get(config.lastEventProcessedBlockPrefix)
         .then((res) => {
             const lastProcessedBlock = Web3.utils.toBN(ethUtil.addHexPrefix(res.toString('hex'))).toNumber();

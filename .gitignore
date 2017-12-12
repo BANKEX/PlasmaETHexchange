@@ -65,3 +65,6 @@ docker-compose.yml
 
 privatekey.*
 certificate.*
+build/*
+build/**
+build
