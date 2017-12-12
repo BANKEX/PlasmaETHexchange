@@ -13,6 +13,12 @@ module.exports = {
     makeTransactionIndexForAddress : true, 
     testOnRinkeby: true,
     useSSL: true,
+    get port() {
+        if (this.useSSL) {
+            return 443
+        }
+        return 8000
+    },
     get provider() {
         if (this.testOnRinkeby){
             return "http://127.0.0.1:8545"

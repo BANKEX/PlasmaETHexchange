@@ -47,7 +47,7 @@ const plasmaOperatorPrivKeyHex = config.plasmaOperatorPrivKeyHex;
 const plasmaOperatorPrivKey = ethUtil.toBuffer(plasmaOperatorPrivKeyHex);
 const plasmaOperatorAddress = config.plasmaOperatorAddress;      
 const testPrivKeys = config.testPrivKeys;  
-const port = 8000;
+const port = config.port;
 
 let sendAsyncPromisified;
 let PlasmaContract;
