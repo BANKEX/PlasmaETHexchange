@@ -12,7 +12,7 @@ module.exports = {
     makeAddressIndex: true,
     makeTransactionIndexForAddress : true, 
     testOnRinkeby: true,
-    // testOnRinkeby: false,
+    useSSL: true,
     get provider() {
         if (this.testOnRinkeby){
             return "http://127.0.0.1:8545"
@@ -39,5 +39,5 @@ module.exports = {
     testAccounts: ["0xf62803ffaddda373d44b10bf6bb404909be0e66b", "0xcf78f18299eac0e0a238db7f4742ef433f98c85e"],
     testPrivKeys: [Buffer.from("7e2abf9c3bcd5c08c6d2156f0d55764602aed7b584c4e95fa01578e605d4cd32", "hex"),
     Buffer.from("0a201a3eb00242401c2d9fffefb0ed8a126281eeae98b4225fdc7265513285a2", "hex")],
-    blockTime: 10000
+    blockTime: 30000
 }

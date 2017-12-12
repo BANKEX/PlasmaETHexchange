@@ -145,8 +145,8 @@ async function prepareOracle(){
     app.processDepositEvent = processDepositEvent;
     app.processExpressWithdrawMakeEvent = processExpressWithdrawMakeEvent;
     require('./app/miner')(app, levelDB, web3);
-    require('./app/endpoints/fundPlasma')(app, levelDB, web3);
-    require('./app/endpoints/acceptAndSignTransaction')(app, levelDB, web3);
+    // require('./app/endpoints/fundPlasma')(app, levelDB, web3);
+    // require('./app/endpoints/acceptAndSignTransaction')(app, levelDB, web3);
     require('./app/endpoints/createTransactionToSign')(app,levelDB,web3);
     require('./app/endpoints/acceptSignedTX')(app, levelDB, web3);
     require('./app/endpoints/getBlockByNumber')(app, levelDB, web3);
@@ -154,13 +154,19 @@ async function prepareOracle(){
     require('./app/endpoints/getUTXOsForAddress')(app, levelDB, web3);
     require('./app/endpoints/getTXsForAddress')(app, levelDB, web3);
     require('./app/endpoints/getWithdrawsForAddress')(app, levelDB, web3);
-    require('./app/endpoints/withdraw')(app, levelDB, web3);
+    // require('./app/endpoints/withdraw')(app, levelDB, web3);
     require('./app/endpoints/auxilary')(app, levelDB, web3);
     require('./app/endpoints/prepareProofForExpressWithdraw')(app, levelDB, web3);
 }
 
-prepareOracle().then((result) => {
-    app.listen(port, async () => {
+prepareOracle().then(async (result) => {
+    if (config.useSSL) {
+        const privateKey = fs.readFileSync( 'privatekey.pem' );
+        const certificate = fs.readFileSync( 'certificate.pem' );
+        await https.createServer({
+            key: privateKey,
+            cert: certificate
+        }, app).listen(port);
         console.log('We are live on ' + port);
         console.log(config.testAccounts[0])
         console.log(config.testAccounts[1])
@@ -170,7 +176,20 @@ prepareOracle().then((result) => {
             console.log(r.route.path)
             }
             })
-        })
+        }
+    else {
+        app.listen(port, async () => {
+            console.log('We are live on ' + port);
+            console.log(config.testAccounts[0])
+            console.log(config.testAccounts[1])
+            console.log("Operator address = " + config.plasmaOperatorAddress);
+            app._router.stack.forEach(function(r){
+            if (r.name && r.name == 'bound dispatch'){
+                console.log(r.route.path)
+                }
+                })
+            })
+        }
     }
 )
 
