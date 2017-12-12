@@ -7,7 +7,8 @@ if (!config.testOnRinkeby) {
 
 const express        = require('express');
 const app            = express();
-var Router = require('named-routes');
+const https = require('https')
+const Router = require('named-routes');
 var router = new Router();
 router.extendExpress(app);
 router.registerAppHelpers(app);
