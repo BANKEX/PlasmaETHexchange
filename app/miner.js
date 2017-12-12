@@ -353,7 +353,7 @@ module.exports = function(app, levelDB, web3) {
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
       }
-    tryToMine.then((res) => {
+    tryToMine().then((res) => {
         console.log("Started mining loop")
     })
     levelDB.get(config.lastEventProcessedBlockPrefix)
