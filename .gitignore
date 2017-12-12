@@ -63,3 +63,5 @@ typings/
 db/
 docker-compose.yml
 
+privatekey.*
+certificate.*
