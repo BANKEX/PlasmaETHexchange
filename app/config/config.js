@@ -12,7 +12,7 @@ module.exports = {
     makeAddressIndex: true,
     makeTransactionIndexForAddress : true, 
     testOnRinkeby: true,
-    useSSL: true,
+    useSSL: false,
     get port() {
         if (this.useSSL) {
             return 443
