@@ -128,6 +128,7 @@ module.exports = function(app, levelDB, web3) {
 
             let sliceLen;
             let TXs;
+            console.log("Mining a block")
             console.log("Queue length = " + app.txQueueArray.length);
             if (app.txQueueArray.length == 0) {
                 return false;

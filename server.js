@@ -95,6 +95,7 @@ async function deployContracts() {
             return;
         }
         DeployedPlasmaContract = new web3.eth.Contract(PlasmaContract.abi, config.deployedPlasmaContract,{from: config.plasmaOperatorAddress, gasPrice: 35e9});
+        console.log("Deployed at "+ DeployedPlasmaContract._address);
         return;
     }
     Web3PlasmaContract = new web3.eth.Contract(PlasmaContract.abi, {from: config.plasmaOperatorAddress});
@@ -168,9 +169,10 @@ prepareOracle().then(async (result) => {
             key: privateKey,
             cert: certificate
         }, app).listen(port);
+        console.log("Live using SSL")
         console.log('We are live on ' + port);
-        console.log(config.testAccounts[0])
-        console.log(config.testAccounts[1])
+        // console.log(config.testAccounts[0])
+        // console.log(config.testAccounts[1])
         console.log("Operator address = " + config.plasmaOperatorAddress);
         app._router.stack.forEach(function(r){
         if (r.name && r.name == 'bound dispatch'){
@@ -181,8 +183,8 @@ prepareOracle().then(async (result) => {
     else {
         app.listen(port, async () => {
             console.log('We are live on ' + port);
-            console.log(config.testAccounts[0])
-            console.log(config.testAccounts[1])
+            // console.log(config.testAccounts[0])
+            // console.log(config.testAccounts[1])
             console.log("Operator address = " + config.plasmaOperatorAddress);
             app._router.stack.forEach(function(r){
             if (r.name && r.name == 'bound dispatch'){
