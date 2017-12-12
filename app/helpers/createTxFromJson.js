@@ -131,8 +131,12 @@ module.exports = function (levelDB) {
                     return null;
                 }
                 outputsTotalValue = outputsTotalValue.add(outputValue);
+                const addr = ethUtil.addHexPrefix(outputJSON.to.toLowerCase());
+                if (addr == undefined) {
+                    return null;
+                }
                 const outputParams = {
-                    to: ethUtil.addHexPrefix(outputJSON.to),
+                    to: addr,
                     // assetID: ethUtil.setLengthLeft(ethUtil.bufferToHex(ethUtil.toBuffer(asset)), 4),
                     outputNumberInTransaction: outputNumberBuffer,
                     amountBuffer: ethUtil.setLengthLeft(ethUtil.toBuffer(outputValue),txAmountLength)
