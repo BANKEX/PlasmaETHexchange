@@ -25,8 +25,8 @@ module.exports = function(app, levelDB, web3) {
         let senderAddress = ethUtil.toBuffer(_from);
         const keyForWithdrawalIndex = Buffer.concat([config.withdrawsForAddressPrefix,
             senderAddress,
-            ethUtil.padLeft(ethUtil.toBuffer(txBlockNumberBN),blockNumberLength), 
-            ethUtil.padLeft(ethUtil.toBuffer(txNumberInBlockBN),txNumberLength)])
+            ethUtil.setLengthLeft(ethUtil.toBuffer(txBlockNumberBN),blockNumberLength), 
+            ethUtil.setLengthLeft(ethUtil.toBuffer(txNumberInBlockBN),txNumberLength)])
         await levelDB.del(keyForWithdrawalIndex);
     }
 }
