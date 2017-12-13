@@ -82,9 +82,9 @@ module.exports = function(app, levelDB, web3) {
                     toBlock: blockNumber
                 });
 
-                if (expressWithdrawEventsInBlock .length > 0) {
-                    for (let i = 0; i< expressWithdrawEventsInBlock .length; i++){
-                        await app.processExpressWithdrawMakeEvent(expressWithdrawEventsInBlock [i]);
+                if (expressWithdrawEventsInBlock.length > 0) {
+                    for (let i = 0; i< expressWithdrawEventsInBlock.length; i++){
+                        await app.processExpressWithdrawMakeEvent(expressWithdrawEventsInBlock[i]);
                     }
                 }
 
@@ -359,7 +359,7 @@ module.exports = function(app, levelDB, web3) {
     levelDB.get(config.lastEventProcessedBlockPrefix)
         .then((res) => {
             const lastProcessedBlock = Web3.utils.toBN(ethUtil.addHexPrefix(res.toString('hex'))).toNumber();
-            // const lastProcessedBlock = 1383600 - 1;
+            // const lastProcessedBlock = 1408111 - 1;
             startBlockProcessing(app, lastProcessedBlock);
         })
         .catch((e) => {
