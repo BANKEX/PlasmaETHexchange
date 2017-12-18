@@ -1,6 +1,13 @@
+![bkx-plasma-github 2](https://user-images.githubusercontent.com/3356474/34122937-0c1e8f34-e43f-11e7-987c-0fb382751eaa.png)
+
 # Plasma protocol compatible ETH Exchange Platform
 
 # WIP!
+
+### Plasma protocol DEMO:
+https://plasma.bankex.com
+### Source-code :octocat::
+https://github.com/BankEx/plasma_client
 
 # Public beta 1 features
 
