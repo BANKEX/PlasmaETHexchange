@@ -6,31 +6,31 @@
 
 ### Plasma protocol DEMO:
 https://plasma.bankex.com
-### Source-code :octocat::
+### Source-code :octocat:
 https://github.com/BankEx/plasma_client
 
 # Public beta 1 features
 
-Public beta will be deployed on Rinkeby network. Link: TBA
+The public beta will be deployed on Rinkeby network. Link: TBA
 
 For Beta 1 only basic functions are enabled with non-optimized UI:
-1. Deposit on a main chain
+1. Deposit on the main chain
 2. Transact in Plasma chain - split, merge, transfer, express withdraw
-3. Only express withdraw is allowed for user experience - it's a two step process: 
+3. Only express withdraw is allowed for user experience - it's a two-step process: 
     
     Burn ETH in Plasma by submitting output to address 0x0
 
-    Submit proof of such transaction to the smart contract on main chain to withdraw on a main chain
+    Submit proof of such transaction to the smart contract on the main chain to withdraw on the main chain
 
 ## Important features and limitations
-- Function of Web3 to sign arbitrary data is used to proof your ownership on the address.
-- #### Signature format is different from the signature format of Ethereum transactions and any derived transaction can not be used to make fraudlent transaction on the main chain
+- The function of Web3 to sign arbitrary data is used to proof your ownership of the address.
+- #### Signature format is different from the signature format of Ethereum transactions, and any derived transaction can not be used to make fraudulent transaction on the main chain
 
-- Sum of the outputs is strictly equal to the sum on the inputs
+- Sum of the outputs is strictly equal to the sum of the inputs
 
-- As there is no standalone client to download and verify blocks, so there is no functionality to proof invalid transactions using the smart contract on a main chain. Wait until Beta 2
+- As there is no standalone client to download and verify blocks, so there is no functionality to proof invalid transactions using the smart contract on the main chain. Wait until Beta 2
 
-- UTXOs are not automatically merged in Beta 1
+- UTXOs are not automatically merged into Beta 1
 
 
 # Clarification
@@ -48,7 +48,7 @@ Initial implementation of a single server-side "Operator" service (with some ext
 5. Prove funding without deposit event or double funding TX of the same deposit
 
 #### Required challenges:
-1. Proof of incorrect TX: signature doesn't correspond to spent UTXOs, or amount is invalid. Special check for trying to spend auxilary transaction output of funding transaction.
+1. Proof of incorrect TX: signature doesn't correspond to spent UTXOs, or amount is invalid. Special check for trying to spend auxiliary transaction output of funding transaction.
 
 ## What?
 
@@ -60,7 +60,7 @@ One of the possible solutions is Plasma - the prominent upgrade to Ethereum bloc
 
 ## Plasma Network Technical Concept
 
-From a technical point of view Plasma blockchain - is just another blockchain, that can be efficiently settled to parent Ethereum chain and is well protected from the misbehavior of both Plasma operator and Plasma blockchain participants by smart-contract on Ethererum network.
+From a technical point of view Plasma blockchain - is just another blockchain, that can be efficiently settled to parent Ethereum chain and is well protected from the misbehavior of both Plasma operator and Plasma blockchain participants by smart-contract on Ethereum network.
 
 Plasma chain itself has a straightforward structure with assets being undividable and transferred in full from the previous owner to the next one. The transaction has inputs and outputs, with few different types of transactions depending on the required function. For example, we propose type "Merge" to connect two inputs into one output in order to reduce the number of UTXOs that will be followed by the client. Full description will be given when the design is more stable. All chain logic is made using Ethereum crypto primitives - sha3, secp256k1 and 65-byte signatures allowing the use of ecrecover.
 
@@ -72,7 +72,7 @@ Block in Plasma network has a structure of Header: ```[BlockNumber, NumberOfTran
 
 The header is submitted by Plasma network operator to the smart-contract on Ethereum chain. Blocks can only be sent one by one, with sequence numbering is enforced by contract. Any user of Ethereum network can deposit ETH to contract that will trigger, event and will allow Plasma network operator to make a funding transaction in a Plasma chain. Then users can freely transact in Plasma chain, with headers pushed to a parent contract in Ethereum.
 
-When a user wants to settle one of his transactions to the main network, he initiates a withdraw on Ethereum network by providing the reference to the transaction (in the form of `BlockNumber`, `TxNumberInBlock`, `OutputNumberInTX`), full transaction and Merkle proof that this transaction was indeed included in that block. Parent contract checks a proof versus submitted root hash for this block. If validation was sucessefull the process of withdrawing starts. After 24 hours it can be finalized. There is a particular kind of transaction in Plasma network that can speed up a process by efficiently burning the input (sending it to `0x0`). If this block is not published by the operator, withdrawing can go as usual.
+When a user wants to settle one of his transactions to the main network, he initiates a withdraw on Ethereum network by providing the reference to the transaction (in the form of `BlockNumber`, `TxNumberInBlock`, `OutputNumberInTX`), full transaction and Merkle proof that this transaction was indeed included in that block. Parent contract checks a proof versus submitted root hash for this block. If validation was successful the process of withdrawing starts. After 24 hours it can be finalized. There is a particular kind of transaction in Plasma network that can speed up a process by efficiently burning the input (sending it to `0x0`). If this block is not published by the operator, withdrawing can go as usual.
 
 
 ## Technology in PoC
@@ -81,7 +81,7 @@ The concept is implemented using JS with conjunction on [Web3](https://github.co
 
 ## Why Plasma?
 
-Here at BankEx, we believe in the efficiency of offloading of some transactions from Ethereum blockchain to Plasma chains especially if the proper incentive is present for Plasma operators to behave appropriately (such incentive can be presented in the form of competing with other operators for obtaining end-users). Another advantage is a flexibility of Plasma chain implementation as long as it can be effectively cross-checked by contract on a parent chain. With the new cryptographic primitive added in Metropolis fork, one can extend our PoC implementation with transactions utilizing ring signatures of **zkSNARK**s for the privacy of end user.
+Here at BankEx, we believe in the efficiency of offloading of some transactions from Ethereum blockchain to Plasma chains especially if the proper incentive is present for Plasma operators to behave appropriately (such incentive can be presented in the form of competing with other operators for obtaining end-users). Another advantage is flexibility of Plasma chain implementation as long as it can be effectively cross-checked by contract on a parent chain. With the new cryptographic primitive added in Metropolis fork, one can extend our PoC implementation with transactions utilizing ring signatures of **zkSNARK**s for the privacy of end user.
 
 ## Getting Started
 
@@ -132,7 +132,7 @@ Operator (oracle): `0x405aaaa4bdcda14a0af295f3669459b6b0fc8104`
 
 ## Code of Conduct
 
-In order to have a more open and welcoming community, BankEx adheres to a
+To have a more open and welcoming community, BankEx adheres to a
 [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Communication :speaker:
@@ -149,7 +149,7 @@ Bug reports, feature requests, patches, well-wishes are always welcome!
 I'd love to see your ideas for improving this library!
 
 * The best way to contribute is by submitting a pull request.
-* Take a inspiration at [Plasma Official page](https://plasma.io/)
+* Take an inspiration at [Plasma Official page](https://plasma.io/)
 * [Fork](https://github.com/BankEx/PlasmaETHexchange/fork)
 * Please read [CONTRIBUTING.md](https://github.com/BankEx/PlasmaETHexchange/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
