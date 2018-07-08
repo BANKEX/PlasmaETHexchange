@@ -2,7 +2,9 @@
 
 # Plasma protocol compatible ETH Exchange Platform
 
-# WIP!
+This is a wrapper and demo page. 
+Plasma like implementation and Parent smart contract [placed in BANKEX/PlasmaParentContract](https://github.com/BANKEX/PlasmaParentContract)*
+
 
 ### Plasma protocol DEMO:
 https://plasma.bankex.com
